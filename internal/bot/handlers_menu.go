@@ -25,7 +25,8 @@ func (b *Bot) handleStart(c tele.Context) error {
 	menu := &tele.ReplyMarkup{}
 	menu.Inline(
 		menu.Row(menu.Data("📡 Прокси (Inbounds)", "inbs")),
-		menu.Row(menu.Data("➕ Новое подключение", "wiz_start")),
+		menu.Row(menu.Data("➕ Новое подключение (Клиент)", "wiz_start")),
+		menu.Row(menu.Data("➕ Создать Inbound (Reality)", "inb_create_start")),
 		menu.Row(menu.Data("🖥 Системный статус", "sys")),
 	)
 
@@ -76,8 +77,10 @@ func (b *Bot) handleText(c tele.Context) error {
 	switch strings.TrimSpace(c.Text()) {
 	case "📡 Прокси", "📡 Прокси (Inbounds)":
 		return b.handleInbounds(c)
-	case "➕ Новое подключение":
+	case "➕ Новое подключение", "➕ Новое подключение (Клиент)":
 		return b.handleWizardStart(c)
+	case "➕ Создать Inbound", "➕ Создать Inbound (Reality)":
+		return b.handleInboundCreateStart(c)
 	case "🖥 Системный статус", "🖥 Статус сервера", "🖥 Статус":
 		return b.handleServerStatus(c)
 	}

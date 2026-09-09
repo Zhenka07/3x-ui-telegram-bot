@@ -72,16 +72,13 @@ func (b *Bot) handleWizardInbound(c tele.Context) error {
 	}
 
 	chatID := c.Chat().ID
-	sess := b.fsm.Get(chatID)
-	if sess == nil || sess.State != stateSelectInbound {
-		return b.handleWizardStart(c)
-	}
-
 	inboundID, err := strconv.Atoi(c.Callback().Data)
 	if err != nil {
 		return c.Send("⚠️ Некорректные данные.")
 	}
 
+	sess := b.fsm.GetOrCreate(chatID)
+	sess.reset()
 	sess.InboundID = inboundID
 	sess.State = stateInputEmail
 	b.fsm.Set(chatID, sess)
@@ -112,6 +109,12 @@ func (b *Bot) handleWizardTextInput(c tele.Context) error {
 		return b.handleTrafficInput(c, sess, text)
 	case stateInputExpiry:
 		return b.handleExpiryInput(c, sess, text)
+	case stateInboundWaitRemark:
+		return b.handleInboundRemarkInput(c, sess, text)
+	case stateInboundWaitPort:
+		return b.handleInboundPortInput(c, sess, text)
+	case stateInboundWaitSNI, stateInboundWaitSNICustom:
+		return b.handleInboundSNIInput(c, sess, text)
 	default:
 		return nil
 	}

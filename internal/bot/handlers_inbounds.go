@@ -38,6 +38,7 @@ func (b *Bot) handleInbounds(c tele.Context) error {
 		label := fmt.Sprintf("%s %s :%d [%d клиентов]", status, ib.Remark, ib.Port, len(ib.Clients))
 		rows = append(rows, menu.Row(menu.Data(label, "inb", strconv.Itoa(ib.ID))))
 	}
+	rows = append(rows, menu.Row(menu.Data("➕ Создать Inbound (Reality)", "inb_create_start")))
 	rows = append(rows, menu.Row(menu.Data("🔙 Главное меню", "main")))
 	menu.Inline(rows...)
 
