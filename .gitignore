@@ -1,0 +1,41 @@
+# Binaries
+admin-bot
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Logs
+*.log
+admin-bot.log
+
+# Databases & local state
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Environment & Secrets
+.env
+.env.*
+.env*.local
+!.env.example
+
+# Task, prompt & session documentation
+master_promt.md
+task.md
+new_task.md
+session-*.md
+*.md
+!README.md
+
+# IDE & OS files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
