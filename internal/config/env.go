@@ -10,8 +10,7 @@ import (
 	"time"
 )
 
-// loadEnvFile читает key=value файл и выставляет переменные окружения,
-// не затирая уже существующие. Отсутствие файла не является ошибкой.
+// loadEnvFile reads a key=value file and sets environment variables without overwriting existing ones.
 func loadEnvFile(path string) error {
 	file, err := os.Open(path)
 	if err != nil {
@@ -28,11 +27,9 @@ func loadEnvFile(path string) error {
 		lineNo++
 		line := strings.TrimSpace(scanner.Text())
 
-		// Пропускаем пустые строки и комментарии.
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		// Поддержка синтаксиса "export KEY=VALUE".
 		line = strings.TrimPrefix(line, "export ")
 
 		key, value, found := strings.Cut(line, "=")
@@ -48,7 +45,6 @@ func loadEnvFile(path string) error {
 		value = strings.TrimSpace(value)
 		value = trimQuotes(value)
 
-		// Переменные окружения имеют приоритет над файлом.
 		if _, exists := os.LookupEnv(key); exists {
 			continue
 		}
@@ -62,7 +58,7 @@ func loadEnvFile(path string) error {
 	return nil
 }
 
-// trimQuotes снимает обрамляющие одинарные или двойные кавычки.
+// trimQuotes removes surrounding single or double quotes from a string.
 func trimQuotes(value string) string {
 	if len(value) < 2 {
 		return value
@@ -74,8 +70,7 @@ func trimQuotes(value string) string {
 	return value
 }
 
-// lookupString возвращает строковое значение переменной окружения
-// либо значение по умолчанию.
+// lookupString returns the environment variable value for key or a default value if not set.
 func lookupString(key, def string) string {
 	if raw, ok := os.LookupEnv(key); ok {
 		if trimmed := strings.TrimSpace(raw); trimmed != "" {
@@ -85,7 +80,7 @@ func lookupString(key, def string) string {
 	return def
 }
 
-// lookupStringFirst возвращает значение первого найденного ключа из списка.
+// lookupStringFirst returns the value of the first matching environment variable key or a default value.
 func lookupStringFirst(keys []string, def string) string {
 	for _, key := range keys {
 		if raw, ok := os.LookupEnv(key); ok {
@@ -97,7 +92,7 @@ func lookupStringFirst(keys []string, def string) string {
 	return def
 }
 
-// lookupBool возвращает булево значение переменной окружения.
+// lookupBool parses a boolean environment variable or returns the default value.
 func lookupBool(key string, def bool) (bool, error) {
 	raw, ok := os.LookupEnv(key)
 	if !ok || strings.TrimSpace(raw) == "" {
@@ -110,7 +105,7 @@ func lookupBool(key string, def bool) (bool, error) {
 	return value, nil
 }
 
-// lookupDuration возвращает длительность (например "10s", "2m").
+// lookupDuration parses a duration environment variable or returns the default value.
 func lookupDuration(key string, def time.Duration) (time.Duration, error) {
 	raw, ok := os.LookupEnv(key)
 	if !ok || strings.TrimSpace(raw) == "" {
@@ -126,7 +121,7 @@ func lookupDuration(key string, def time.Duration) (time.Duration, error) {
 	return value, nil
 }
 
-// lookupIDList парсит список Telegram ID, разделённых запятыми или пробелами.
+// lookupIDList parses a list of Telegram IDs separated by commas, spaces, or semicolons.
 func lookupIDList(key string) ([]int64, error) {
 	raw, ok := os.LookupEnv(key)
 	if !ok || strings.TrimSpace(raw) == "" {

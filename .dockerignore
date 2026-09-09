@@ -1,0 +1,10 @@
+admin-bot
+*.exe
+*.test
+*.out
+*.log
+data/
+*.db*
+.env
+.git
+docs/

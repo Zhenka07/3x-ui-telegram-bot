@@ -8,8 +8,7 @@ import (
 	"fmt"
 )
 
-// GenerateX25519Keys генерирует пару ключей x25519 локально на Go через crypto/ecdh.
-// Возвращает ключи в unpadded base64 (RawURLEncoding), совместимом с Xray Reality.
+// GenerateX25519Keys generates a new X25519 key pair encoded in raw URL base64 for Reality.
 func GenerateX25519Keys() (*X25519Cert, error) {
 	priv, err := ecdh.X25519().GenerateKey(rand.Reader)
 	if err != nil {
@@ -25,11 +24,10 @@ func GenerateX25519Keys() (*X25519Cert, error) {
 	}, nil
 }
 
-// GenerateShortID генерирует случайный shortId длиной 8 байт (16 hex-символов).
+// GenerateShortID generates a random 16-character hexadecimal short ID for Reality.
 func GenerateShortID() string {
 	b := make([]byte, 8)
 	if _, err := rand.Read(b); err != nil {
-		// Fallback в маловероятном случае сбоя crypto/rand
 		return "0123456789abcdef"
 	}
 	return hex.EncodeToString(b)

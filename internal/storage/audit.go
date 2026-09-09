@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// AuditLog — запись лога действий администратора.
 type AuditLog struct {
 	AdminID     int64
 	Action      string
@@ -15,17 +14,16 @@ type AuditLog struct {
 	CreatedAt   time.Time
 }
 
-// AuditRepo — репозиторий аудита действий администраторов.
 type AuditRepo struct {
 	db *DB
 }
 
-// NewAuditRepo создаёт репозиторий аудита.
+// NewAuditRepo creates a new AuditRepo instance.
 func NewAuditRepo(db *DB) *AuditRepo {
 	return &AuditRepo{db: db}
 }
 
-// Log записывает действие администратора в журнал.
+// Log records an administrator action in the audit log.
 func (r *AuditRepo) Log(ctx context.Context, entry AuditLog) error {
 	if entry.CreatedAt.IsZero() {
 		entry.CreatedAt = time.Now().UTC()

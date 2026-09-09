@@ -8,7 +8,6 @@ import (
 	"time"
 )
 
-// Значения по умолчанию.
 const (
 	defaultEnvFile       = ".env"
 	defaultDBPath        = "data/admin.db"
@@ -17,9 +16,7 @@ const (
 	defaultLogLevel      = "info"
 )
 
-// Load загружает конфигурацию из окружения и .env файла, после чего валидирует её.
-//
-// Путь к env-файлу можно переопределить переменной ENV_FILE.
+// Load reads configuration from environment variables and an optional .env file, then validates it.
 func Load() (*Config, error) {
 	envFile := defaultEnvFile
 	if custom := strings.TrimSpace(os.Getenv("ENV_FILE")); custom != "" {
@@ -48,6 +45,7 @@ func Load() (*Config, error) {
 	return cfg, nil
 }
 
+// loadTelegram loads Telegram configuration parameters from environment variables.
 func (c *Config) loadTelegram() error {
 	c.Telegram.Token = lookupStringFirst([]string{"BOT_TOKEN", "TELEGRAM_BOT_TOKEN"}, "")
 
@@ -65,9 +63,8 @@ func (c *Config) loadTelegram() error {
 	return nil
 }
 
+// loadXUI loads 3x-ui configuration parameters from environment variables.
 func (c *Config) loadXUI() error {
-	// Нормализуем базовый URL: убираем завершающий слэш,
-	// чтобы конкатенация путей была предсказуемой.
 	c.XUI.BaseURL = strings.TrimRight(lookupString("XUI_BASE_URL", ""), "/")
 	c.XUI.Username = lookupString("XUI_USERNAME", "")
 	c.XUI.Password = lookupString("XUI_PASSWORD", "")
@@ -86,7 +83,7 @@ func (c *Config) loadXUI() error {
 	return nil
 }
 
-// validate проверяет обязательные поля конфигурации.
+// validate checks required configuration fields.
 func (c *Config) validate() error {
 	var missing []string
 

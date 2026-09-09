@@ -31,7 +31,11 @@ task.md
 new_task.md
 session-*.md
 *.md
-!README.md
+!README*.md
+!CHANGELOG.md
+!CONTRIBUTING*.md
+!SECURITY*.md
+!docs/**
 
 # IDE & OS files
 .idea/

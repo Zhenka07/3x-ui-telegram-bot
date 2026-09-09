@@ -1,4 +1,3 @@
-// Package main — точка входа сервиса Telegram-админ-панели 3x-ui.
 package main
 
 import (
@@ -15,6 +14,7 @@ import (
 	"github.com/zhenya/3x-ui-admin/internal/xui"
 )
 
+// main is the entry point of the admin application.
 func main() {
 	if err := run(); err != nil {
 		slog.Error("критическая ошибка при работе сервиса", "error", err)
@@ -22,22 +22,19 @@ func main() {
 	}
 }
 
+// run initializes and runs all components of the admin bot service.
 func run() error {
-	// 1. Загрузка конфигурации.
 	cfg, err := config.Load()
 	if err != nil {
 		return fmt.Errorf("загрузка конфигурации: %w", err)
 	}
 
-	// 2. Инициализация логгера.
 	logger := setupLogger(cfg.LogLevel)
 	logger.Info("запуск сервиса 3x-ui Admin Bot")
 
-	// 3. Graceful shutdown.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// 4. Клиент 3x-ui API.
 	logger.Info("инициализация клиента 3x-ui API",
 		"base_url", cfg.XUI.BaseURL,
 	)
@@ -52,7 +49,6 @@ func run() error {
 		return fmt.Errorf("создание клиента 3x-ui: %w", err)
 	}
 
-	// 5. Инициализация хранилища аудита (SQLite без CGO).
 	logger.Info("инициализация хранилища аудита", "db_path", cfg.Storage.DBPath)
 	sqlDB, err := storage.Open(ctx, cfg.Storage.DBPath)
 	if err != nil {
@@ -61,20 +57,17 @@ func run() error {
 	defer sqlDB.Close()
 	auditRepo := storage.NewAuditRepo(sqlDB)
 
-	// 6. Инициализация Telegram-бота.
 	logger.Info("инициализация Telegram-бота")
 	tgBot, err := bot.New(*cfg, xuiClient, auditRepo, logger)
 	if err != nil {
 		return fmt.Errorf("создание Telegram-бота: %w", err)
 	}
 
-	// 7. Логирование сигнала остановки.
 	go func() {
 		<-ctx.Done()
 		logger.Info("получен сигнал остановки (SIGINT/SIGTERM), завершаем работу...")
 	}()
 
-	// 7. Запуск (блокирующий).
 	if err := tgBot.Start(ctx); err != nil {
 		return fmt.Errorf("работа бота завершилась с ошибкой: %w", err)
 	}
@@ -83,6 +76,7 @@ func run() error {
 	return nil
 }
 
+// setupLogger initializes and returns a slog.Logger configured with the given log level.
 func setupLogger(levelStr string) *slog.Logger {
 	var level slog.Level
 	switch levelStr {

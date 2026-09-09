@@ -6,13 +6,12 @@ import (
 	tele "gopkg.in/telebot.v3"
 )
 
-// registerMiddleware подключает общие middleware.
-// Порядок: recover → logging → adminOnly.
+// registerMiddleware registers global bot middlewares in sequential order.
 func (b *Bot) registerMiddleware() {
 	b.tele.Use(b.recoverMiddleware, b.loggingMiddleware, b.adminOnlyMiddleware)
 }
 
-// recoverMiddleware перехватывает панику в обработчике.
+// recoverMiddleware recovers from panics in handler executions.
 func (b *Bot) recoverMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) (err error) {
 		defer func() {
@@ -29,7 +28,7 @@ func (b *Bot) recoverMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
 	}
 }
 
-// loggingMiddleware пишет в лог факт и длительность обработки обновления.
+// loggingMiddleware logs update processing details and duration.
 func (b *Bot) loggingMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) error {
 		started := time.Now()
@@ -61,8 +60,7 @@ func (b *Bot) loggingMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
 	}
 }
 
-// adminOnlyMiddleware проверяет, что отправитель входит в список ADMIN_IDS.
-// Неавторизованные пользователи тихо игнорируются (без ответа).
+// adminOnlyMiddleware restricts bot access to configured administrator IDs only.
 func (b *Bot) adminOnlyMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) error {
 		sender := c.Sender()
@@ -71,7 +69,6 @@ func (b *Bot) adminOnlyMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
 		}
 		if !b.cfg.Telegram.IsAdmin(sender.ID) {
 			b.log.Warn("доступ запрещён (не админ)", "tg_id", sender.ID, "username", sender.Username)
-			// Тихий игнор — не раскрываем наличие бота.
 			return nil
 		}
 		return next(c)

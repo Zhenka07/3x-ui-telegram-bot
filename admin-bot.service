@@ -1,0 +1,24 @@
+[Unit]
+Description=3x-ui Telegram Admin Bot
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/3x-ui-admin
+ExecStart=/opt/3x-ui-admin/admin-bot
+Restart=always
+RestartSec=5s
+
+# Переменные окружения загружаются из .env файла
+EnvironmentFile=/opt/3x-ui-admin/.env
+
+# Ограничения и журналирование
+LimitNOFILE=65535
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=admin-bot
+
+[Install]
+WantedBy=multi-user.target

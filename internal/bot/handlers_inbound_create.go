@@ -16,7 +16,7 @@ import (
 
 var domainRegex = regexp.MustCompile(`^([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$`)
 
-// handleInboundCreateStart начинает пошаговый мастер создания Inbound.
+// handleInboundCreateStart starts the wizard for creating a new inbound connection.
 func (b *Bot) handleInboundCreateStart(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -42,7 +42,7 @@ func (b *Bot) handleInboundCreateStart(c tele.Context) error {
 	)
 }
 
-// handleInboundCreateCancel отменяет создание Inbound и возвращает в список инбаундов.
+// handleInboundCreateCancel cancels inbound creation and returns to the inbounds list.
 func (b *Bot) handleInboundCreateCancel(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -54,7 +54,7 @@ func (b *Bot) handleInboundCreateCancel(c tele.Context) error {
 	return b.handleInbounds(c)
 }
 
-// handleInboundRemarkInput обрабатывает ввод названия инбаунда (Remark).
+// handleInboundRemarkInput processes user text input for the inbound remark.
 func (b *Bot) handleInboundRemarkInput(c tele.Context, sess *wizardSession, text string) error {
 	trimmed := strings.TrimSpace(text)
 	if len(trimmed) < 2 || len(trimmed) > 64 {
@@ -69,7 +69,7 @@ func (b *Bot) handleInboundRemarkInput(c tele.Context, sess *wizardSession, text
 	return b.showInboundPortPrompt(c)
 }
 
-// showInboundPortPrompt отправляет выбор или ввод порта.
+// showInboundPortPrompt displays port selection options or prompts for custom port input.
 func (b *Bot) showInboundPortPrompt(c tele.Context) error {
 	menu := &tele.ReplyMarkup{}
 	menu.Inline(
@@ -91,7 +91,7 @@ func (b *Bot) showInboundPortPrompt(c tele.Context) error {
 	)
 }
 
-// handleInboundPortRandom генерирует свободный порт в диапазоне 15000–55000.
+// handleInboundPortRandom assigns a random available port to the inbound session.
 func (b *Bot) handleInboundPortRandom(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -111,7 +111,7 @@ func (b *Bot) handleInboundPortRandom(c tele.Context) error {
 	return b.showInboundSNIPrompt(c)
 }
 
-// handleInboundPort443 выбирает порт 443.
+// handleInboundPort443 selects port 443 for the inbound session.
 func (b *Bot) handleInboundPort443(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -130,7 +130,7 @@ func (b *Bot) handleInboundPort443(c tele.Context) error {
 	return b.showInboundSNIPrompt(c)
 }
 
-// handleInboundPortInput обрабатывает ручной ввод порта.
+// handleInboundPortInput processes user text input for the inbound port.
 func (b *Bot) handleInboundPortInput(c tele.Context, sess *wizardSession, text string) error {
 	port, err := strconv.Atoi(strings.TrimSpace(text))
 	if err != nil || port < 1000 || port > 65535 {
@@ -145,7 +145,7 @@ func (b *Bot) handleInboundPortInput(c tele.Context, sess *wizardSession, text s
 	return b.showInboundSNIPrompt(c)
 }
 
-// showInboundSNIPrompt предлагает выбрать или ввести домен маскировки (SNI).
+// showInboundSNIPrompt displays SNI domain choices or prompts for custom input.
 func (b *Bot) showInboundSNIPrompt(c tele.Context) error {
 	menu := &tele.ReplyMarkup{}
 	menu.Inline(
@@ -174,7 +174,7 @@ func (b *Bot) showInboundSNIPrompt(c tele.Context) error {
 	)
 }
 
-// handleInboundSNISelect обрабатывает выбор пресета домена маскировки.
+// handleInboundSNISelect processes a preset SNI domain button selection.
 func (b *Bot) handleInboundSNISelect(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -198,7 +198,7 @@ func (b *Bot) handleInboundSNISelect(c tele.Context) error {
 	return b.showInboundConfirm(c, sess)
 }
 
-// handleInboundSNICustom запрашивает ручной ввод домена.
+// handleInboundSNICustom prompts the user for custom SNI domain text input.
 func (b *Bot) handleInboundSNICustom(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -227,7 +227,7 @@ func (b *Bot) handleInboundSNICustom(c tele.Context) error {
 	)
 }
 
-// handleInboundSNIInput обрабатывает ручной ввод домена в чат.
+// handleInboundSNIInput processes user text input for custom SNI domain.
 func (b *Bot) handleInboundSNIInput(c tele.Context, sess *wizardSession, text string) error {
 	domain := cleanDomain(text)
 	if !domainRegex.MatchString(domain) {
@@ -242,11 +242,10 @@ func (b *Bot) handleInboundSNIInput(c tele.Context, sess *wizardSession, text st
 	return b.showInboundConfirm(c, sess)
 }
 
-// showInboundConfirm подготавливает ключи и выводит карточку подтверждения создания.
+// showInboundConfirm generates keys if needed and displays the inbound creation confirmation card.
 func (b *Bot) showInboundConfirm(c tele.Context, sess *wizardSession) error {
 	chatID := c.Chat().ID
 
-	// Генерируем Reality-ключи, если ещё не созданы для этой сессии
 	if sess.InboundPrivateKey == "" || sess.InboundPublicKey == "" {
 		ctx, cancel := withTimeout()
 		cert, err := b.xui.GetNewX25519Cert(ctx)
@@ -297,7 +296,7 @@ func (b *Bot) showInboundConfirm(c tele.Context, sess *wizardSession) error {
 	})
 }
 
-// handleInboundConfirmSubmit создаёт инбаунд в панели 3x-ui.
+// handleInboundConfirmSubmit creates the inbound connection on the 3x-ui server.
 func (b *Bot) handleInboundConfirmSubmit(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -368,7 +367,7 @@ func (b *Bot) handleInboundConfirmSubmit(c tele.Context) error {
 	})
 }
 
-// getRandomInboundPort возвращает случайный свободный порт в диапазоне 15000–55000.
+// getRandomInboundPort returns an available port within the 15000-55000 range.
 func (b *Bot) getRandomInboundPort() int {
 	used := make(map[int]bool)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -382,7 +381,7 @@ func (b *Bot) getRandomInboundPort() int {
 
 	rnd := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for i := 0; i < 100; i++ {
-		p := 15000 + rnd.Intn(40001) // 15000..55000
+		p := 15000 + rnd.Intn(40001)
 		if !used[p] {
 			return p
 		}
@@ -390,7 +389,7 @@ func (b *Bot) getRandomInboundPort() int {
 	return 25443
 }
 
-// cleanDomain очищает домен от протокола http/https, портов и концевых слэшей.
+// cleanDomain strips protocol schemes, ports, and trailing paths from a domain string.
 func cleanDomain(input string) string {
 	d := strings.TrimSpace(strings.ToLower(input))
 	d = strings.TrimPrefix(d, "https://")

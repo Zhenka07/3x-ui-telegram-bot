@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// NewUUID генерирует случайный UUID версии 4 (RFC 4122).
+// NewUUID generates a random UUID version 4 according to RFC 4122.
 func NewUUID() (string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {

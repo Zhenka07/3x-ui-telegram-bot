@@ -10,7 +10,7 @@ import (
 
 const clientsPerPage = 10
 
-// handleInbounds показывает список всех инбаундов.
+// handleInbounds displays a list of all inbounds.
 func (b *Bot) handleInbounds(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -48,7 +48,7 @@ func (b *Bot) handleInbounds(c tele.Context) error {
 	})
 }
 
-// handleSelectInbound показывает список клиентов выбранного инбаунда.
+// handleSelectInbound displays the list of clients for the selected inbound.
 func (b *Bot) handleSelectInbound(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -62,7 +62,7 @@ func (b *Bot) handleSelectInbound(c tele.Context) error {
 	return b.showClients(c, inboundID, 0)
 }
 
-// handleClientPage обрабатывает пагинацию списка клиентов.
+// handleClientPage handles pagination of the client list.
 func (b *Bot) handleClientPage(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -85,7 +85,7 @@ func (b *Bot) handleClientPage(c tele.Context) error {
 	return b.showClients(c, inboundID, page)
 }
 
-// showClients отображает страницу клиентов инбаунда.
+// showClients displays a paginated list of clients for the specified inbound.
 func (b *Bot) showClients(c tele.Context, inboundID, page int) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
@@ -129,7 +129,6 @@ func (b *Bot) showClients(c tele.Context, inboundID, page int) error {
 		))
 	}
 
-	// Навигация.
 	var navBtns []tele.Btn
 	if page > 0 {
 		navBtns = append(navBtns, menu.Data("⬅️ Назад", "pg", fmt.Sprintf("%d|%d", inboundID, page-1)))

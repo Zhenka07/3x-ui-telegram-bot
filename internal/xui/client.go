@@ -1,10 +1,3 @@
-// Package xui реализует клиент к REST API панели 3x-ui.
-//
-// Особенности панели, учтённые в реализации:
-//   - Авторизация основана на сессионной куке, поэтому http.Client
-//     обязательно снабжается CookieJar.
-//   - При истечении сессии панель отвечает 401/403 либо редиректом на /login.
-//     Клиент автоматически выполняет повторный Login и повторяет запрос.
 package xui
 
 import (
@@ -17,7 +10,6 @@ import (
 	"time"
 )
 
-// Ошибки уровня клиента.
 var (
 	ErrUnauthorized   = errors.New("сессия 3x-ui недействительна")
 	ErrClientNotFound = errors.New("клиент не найден в панели 3x-ui")
@@ -30,7 +22,6 @@ const (
 	maxLoginAttempts = 2
 )
 
-// Config — параметры подключения к панели.
 type Config struct {
 	BaseURL            string
 	Username           string
@@ -39,7 +30,6 @@ type Config struct {
 	InsecureSkipVerify bool
 }
 
-// Logger — минимальный интерфейс логирования.
 type Logger interface {
 	Debug(msg string, args ...any)
 	Warn(msg string, args ...any)
@@ -50,8 +40,6 @@ type nopLogger struct{}
 func (nopLogger) Debug(string, ...any) {}
 func (nopLogger) Warn(string, ...any)  {}
 
-// APIClient — HTTP-клиент к панели 3x-ui.
-// Безопасен для конкурентного использования.
 type APIClient struct {
 	baseURL  string
 	username string
@@ -65,7 +53,7 @@ type APIClient struct {
 	csrfToken string
 }
 
-// New создаёт клиент панели 3x-ui.
+// New creates a new 3x-ui API client with the given configuration and logger.
 func New(cfg Config, log Logger) (*APIClient, error) {
 	if cfg.BaseURL == "" {
 		return nil, fmt.Errorf("создание клиента 3x-ui: не задан BaseURL")

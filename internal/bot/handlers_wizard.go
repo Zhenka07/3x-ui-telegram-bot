@@ -14,10 +14,9 @@ import (
 	"github.com/zhenya/3x-ui-admin/internal/xui"
 )
 
-// emailRegex — допустимые символы для имени клиента.
 var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9_-]{3,32}$`)
 
-// handleWizardStart запускает конструктор нового подключения.
+// handleWizardStart initiates the wizard for creating a new client.
 func (b *Bot) handleWizardStart(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -32,7 +31,6 @@ func (b *Bot) handleWizardStart(c tele.Context) error {
 		return c.Send("⚠️ Не удалось получить список инбаундов.")
 	}
 
-	// Фильтруем только Reality-инбаунды.
 	var realityInbounds []xui.Inbound
 	for _, ib := range inbounds {
 		if ib.IsReality && ib.Enable {
@@ -65,7 +63,7 @@ func (b *Bot) handleWizardStart(c tele.Context) error {
 	})
 }
 
-// handleWizardInbound — шаг 1: выбран инбаунд.
+// handleWizardInbound handles inbound selection during client creation.
 func (b *Bot) handleWizardInbound(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -92,7 +90,7 @@ func (b *Bot) handleWizardInbound(c tele.Context) error {
 	})
 }
 
-// handleWizardTextInput обрабатывает текстовый ввод в рамках FSM.
+// handleWizardTextInput routes text input based on the current FSM wizard state.
 func (b *Bot) handleWizardTextInput(c tele.Context) error {
 	chatID := c.Chat().ID
 	sess := b.fsm.Get(chatID)
@@ -120,7 +118,7 @@ func (b *Bot) handleWizardTextInput(c tele.Context) error {
 	}
 }
 
-// handleEmailInput — обработка ввода email.
+// handleEmailInput validates and records the entered client email identifier.
 func (b *Bot) handleEmailInput(c tele.Context, sess *wizardSession, text string) error {
 	chatID := c.Chat().ID
 
@@ -137,7 +135,7 @@ func (b *Bot) handleEmailInput(c tele.Context, sess *wizardSession, text string)
 	return b.showTrafficOptions(c)
 }
 
-// showTrafficOptions показывает кнопки выбора лимита трафика.
+// showTrafficOptions displays available traffic limit presets and manual input option.
 func (b *Bot) showTrafficOptions(c tele.Context) error {
 	menu := &tele.ReplyMarkup{}
 	menu.Inline(
@@ -158,7 +156,7 @@ func (b *Bot) showTrafficOptions(c tele.Context) error {
 	})
 }
 
-// handleWizardTraffic — шаг 3: выбран лимит трафика.
+// handleWizardTraffic handles traffic limit preset selection.
 func (b *Bot) handleWizardTraffic(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -182,7 +180,7 @@ func (b *Bot) handleWizardTraffic(c tele.Context) error {
 	return b.showExpiryOptions(c)
 }
 
-// handleWizardTrafficCustom — запрос ручного ввода лимита.
+// handleWizardTrafficCustom prompts the user for custom traffic limit input.
 func (b *Bot) handleWizardTrafficCustom(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -206,7 +204,7 @@ func (b *Bot) handleWizardTrafficCustom(c tele.Context) error {
 	})
 }
 
-// handleTrafficInput — ручной ввод трафика.
+// handleTrafficInput validates and records the entered traffic limit.
 func (b *Bot) handleTrafficInput(c tele.Context, sess *wizardSession, text string) error {
 	chatID := c.Chat().ID
 
@@ -222,7 +220,7 @@ func (b *Bot) handleTrafficInput(c tele.Context, sess *wizardSession, text strin
 	return b.showExpiryOptions(c)
 }
 
-// showExpiryOptions показывает кнопки выбора срока действия.
+// showExpiryOptions displays duration presets and manual input option.
 func (b *Bot) showExpiryOptions(c tele.Context) error {
 	menu := &tele.ReplyMarkup{}
 	menu.Inline(
@@ -243,7 +241,7 @@ func (b *Bot) showExpiryOptions(c tele.Context) error {
 	})
 }
 
-// handleWizardExpiry — шаг 4: выбран срок действия.
+// handleWizardExpiry handles duration preset selection.
 func (b *Bot) handleWizardExpiry(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -267,7 +265,7 @@ func (b *Bot) handleWizardExpiry(c tele.Context) error {
 	return b.showConfirmation(c, sess)
 }
 
-// handleWizardExpiryCustom — запрос ручного ввода срока.
+// handleWizardExpiryCustom prompts the user for custom duration input.
 func (b *Bot) handleWizardExpiryCustom(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -291,7 +289,7 @@ func (b *Bot) handleWizardExpiryCustom(c tele.Context) error {
 	})
 }
 
-// handleExpiryInput — ручной ввод срока.
+// handleExpiryInput validates and records the entered expiration period.
 func (b *Bot) handleExpiryInput(c tele.Context, sess *wizardSession, text string) error {
 	chatID := c.Chat().ID
 
@@ -307,7 +305,7 @@ func (b *Bot) handleExpiryInput(c tele.Context, sess *wizardSession, text string
 	return b.showConfirmation(c, sess)
 }
 
-// showConfirmation показывает сводку перед созданием.
+// showConfirmation displays the client creation summary card for user confirmation.
 func (b *Bot) showConfirmation(c tele.Context, sess *wizardSession) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
@@ -331,7 +329,7 @@ func (b *Bot) showConfirmation(c tele.Context, sess *wizardSession) error {
 	})
 }
 
-// handleWizardConfirm — создание клиента.
+// handleWizardConfirm creates the client in 3x-ui and sends the generated link and QR code.
 func (b *Bot) handleWizardConfirm(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -350,7 +348,6 @@ func (b *Bot) handleWizardConfirm(c tele.Context) error {
 		b.log.Debug("не удалось отправить индикатор", "error", err)
 	}
 
-	// Генерация UUID.
 	uuid, err := vless.NewUUID()
 	if err != nil {
 		b.log.Error("wizard: ошибка генерации UUID", "error", err)
@@ -358,7 +355,6 @@ func (b *Bot) handleWizardConfirm(c tele.Context) error {
 		return c.Send("⚠️ Ошибка генерации UUID.")
 	}
 
-	// Подготовка спецификации.
 	var expiryAt time.Time
 	if sess.ExpiryDays > 0 {
 		expiryAt = time.Now().UTC().AddDate(0, 0, sess.ExpiryDays)
@@ -378,7 +374,6 @@ func (b *Bot) handleWizardConfirm(c tele.Context) error {
 		Enable:            true,
 	}
 
-	// Создание клиента в панели.
 	if err := b.xui.AddClient(ctx, sess.InboundID, spec); err != nil {
 		b.log.Error("wizard: не удалось создать клиента", "email", sess.Email, "error", err)
 		b.fsm.Delete(chatID)
@@ -389,7 +384,6 @@ func (b *Bot) handleWizardConfirm(c tele.Context) error {
 	b.auditLog(c, "client_create", sess.InboundID, sess.Email,
 		fmt.Sprintf("trafficGB=%d expiryDays=%d uuid=%s", sess.TrafficGB, sess.ExpiryDays, uuid))
 
-	// Генерация ссылки.
 	ib, err := b.xui.GetInbound(ctx, sess.InboundID)
 	if err != nil {
 		b.fsm.Delete(chatID)
@@ -400,7 +394,6 @@ func (b *Bot) handleWizardConfirm(c tele.Context) error {
 
 	client := ib.FindClient(sess.Email)
 	if client == nil {
-		// Клиент только что создан, но не найден — используем данные из spec.
 		tempClient := &xui.Client{
 			ID:    uuid,
 			Email: sess.Email,
@@ -420,7 +413,6 @@ func (b *Bot) handleWizardConfirm(c tele.Context) error {
 		})
 	}
 
-	// Отправляем QR + ссылку.
 	photo := &tele.Photo{
 		Caption: wizardSuccessText(sess.Email, uri),
 	}
@@ -429,7 +421,6 @@ func (b *Bot) handleWizardConfirm(c tele.Context) error {
 	if err := c.Send(photo, &tele.SendOptions{
 		ParseMode: tele.ModeHTML,
 	}); err != nil {
-		// Фолбэк: текст без QR.
 		return c.Send(wizardSuccessText(sess.Email, uri), &tele.SendOptions{
 			ParseMode: tele.ModeHTML,
 		})
@@ -437,7 +428,7 @@ func (b *Bot) handleWizardConfirm(c tele.Context) error {
 	return nil
 }
 
-// handleWizardCancel отменяет конструктор.
+// handleWizardCancel cancels the active wizard session and returns to the main menu.
 func (b *Bot) handleWizardCancel(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()

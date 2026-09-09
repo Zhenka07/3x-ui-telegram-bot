@@ -8,10 +8,9 @@ import (
 	"github.com/zhenya/3x-ui-admin/internal/xui"
 )
 
-// streamSettingsRaw представляет структуру streamSettings из 3x-ui.
 type streamSettingsRaw struct {
-	Network         string               `json:"network"`
-	Security        string               `json:"security"`
+	Network         string              `json:"network"`
+	Security        string              `json:"security"`
 	RealitySettings *realitySettingsRaw `json:"realitySettings"`
 }
 
@@ -30,7 +29,7 @@ type realitySubSettings struct {
 	SpiderX     string `json:"spiderX"`
 }
 
-// ParseRealityStreamSettings извлекает параметры Reality из сырой строки streamSettings.
+// ParseRealityStreamSettings extracts Reality parameters from a raw streamSettings JSON string.
 func ParseRealityStreamSettings(rawJSON, serverAddr string, port int, tag, flow string) (*Params, error) {
 	if strings.TrimSpace(rawJSON) == "" {
 		return nil, fmt.Errorf("пустые streamSettings")
@@ -85,7 +84,7 @@ func ParseRealityStreamSettings(rawJSON, serverAddr string, port int, tag, flow 
 	return params, nil
 }
 
-// ParseInboundReality извлекает параметры Reality из структуры xui.Inbound.
+// ParseInboundReality extracts Reality parameters from an xui.Inbound structure.
 func ParseInboundReality(serverAddr string, ib *xui.Inbound, flow string) (*Params, error) {
 	if ib == nil {
 		return nil, fmt.Errorf("inbound is nil")

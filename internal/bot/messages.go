@@ -11,8 +11,7 @@ import (
 
 var errPanicRecovered = errors.New("внутренняя ошибка обработчика")
 
-// ── Главное меню ────────────────────────────────────────────────────
-
+// welcomeText returns the formatted welcome message for the main menu.
 func welcomeText() string {
 	var sb strings.Builder
 	sb.WriteString("🛡 <b>Админ-панель 3x-ui</b>\n\n")
@@ -21,8 +20,7 @@ func welcomeText() string {
 	return sb.String()
 }
 
-// ── Системный статус ────────────────────────────────────────────────
-
+// serverStatusText formats system resource metrics and Xray daemon status.
 func serverStatusText(status *xui.ServerStatus) string {
 	var sb strings.Builder
 	sb.WriteString("🖥 <b>Системный статус</b>\n\n")
@@ -63,8 +61,7 @@ func serverStatusText(status *xui.ServerStatus) string {
 	return sb.String()
 }
 
-// ── Инбаунды ────────────────────────────────────────────────────────
-
+// inboundsListText formats the inbound connection list overview.
 func inboundsListText(inbounds []xui.Inbound) string {
 	var sb strings.Builder
 	sb.WriteString("📡 <b>Прокси (Inbounds)</b>\n\n")
@@ -87,8 +84,7 @@ func inboundsListText(inbounds []xui.Inbound) string {
 	return sb.String()
 }
 
-// ── Список клиентов ─────────────────────────────────────────────────
-
+// clientsListText formats the header text for paginated client lists.
 func clientsListText(ib *xui.Inbound, page, totalPages int) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("👥 <b>Клиенты — %s</b> (:%d)\n",
@@ -97,8 +93,7 @@ func clientsListText(ib *xui.Inbound, page, totalPages int) string {
 	return sb.String()
 }
 
-// ── Карточка клиента ────────────────────────────────────────────────
-
+// clientCardText formats the detailed information card for a client.
 func clientCardText(client *xui.Client, traffic *xui.ClientTraffic, ib *xui.Inbound) string {
 	var sb strings.Builder
 
@@ -112,7 +107,6 @@ func clientCardText(client *xui.Client, traffic *xui.ClientTraffic, ib *xui.Inbo
 	sb.WriteString(fmt.Sprintf("Статус: %s\n", status))
 	sb.WriteString(fmt.Sprintf("UUID: <code>%s</code>\n\n", escapeHTML(client.ID)))
 
-	// Блок трафика.
 	if traffic != nil {
 		sb.WriteString("📈 <b>Трафик</b>\n")
 		sb.WriteString(fmt.Sprintf("• Использовано: <b>%s</b>\n", formatBytes(traffic.Used())))
@@ -126,7 +120,6 @@ func clientCardText(client *xui.Client, traffic *xui.ClientTraffic, ib *xui.Inbo
 			sb.WriteString("• Лимит: <b>без ограничений</b>\n")
 		}
 	} else {
-		// Нет данных из API — показываем то, что есть в клиенте.
 		if client.TotalGB > 0 {
 			sb.WriteString(fmt.Sprintf("📊 Лимит трафика: %s\n", formatBytes(client.TotalGB)))
 		} else {
@@ -134,7 +127,6 @@ func clientCardText(client *xui.Client, traffic *xui.ClientTraffic, ib *xui.Inbo
 		}
 	}
 
-	// Блок срока действия.
 	expiry := client.ExpiryAt()
 	if expiry.IsZero() {
 		sb.WriteString("\n🕒 Срок действия: <b>бессрочно</b>\n")
@@ -155,33 +147,38 @@ func clientCardText(client *xui.Client, traffic *xui.ClientTraffic, ib *xui.Inbo
 	return sb.String()
 }
 
-// ── Конструктор (Wizard) ────────────────────────────────────────────
-
+// wizardSelectInboundText returns the prompt for choosing an inbound in the wizard.
 func wizardSelectInboundText() string {
 	return "🔧 <b>Конструктор нового подключения</b>\n\nШаг 1/4: Выберите Reality-инбаунд:"
 }
 
+// wizardInputEmailText returns the prompt for entering a client email in the wizard.
 func wizardInputEmailText() string {
 	return "🔧 <b>Шаг 2/4: Имя клиента</b>\n\nВведите email (имя) нового клиента.\n" +
 		"Допустимы: латиница, цифры, <code>_</code>, <code>-</code> (3–32 символа)."
 }
 
+// wizardSelectTrafficText returns the prompt for selecting a traffic limit.
 func wizardSelectTrafficText() string {
 	return "🔧 <b>Шаг 3/4: Лимит трафика</b>\n\nВыберите лимит трафика для клиента:"
 }
 
+// wizardInputTrafficText returns the prompt for entering custom traffic limit.
 func wizardInputTrafficText() string {
 	return "Введите лимит трафика в ГБ (целое число):"
 }
 
+// wizardSelectExpiryText returns the prompt for selecting duration.
 func wizardSelectExpiryText() string {
 	return "🔧 <b>Шаг 4/4: Срок действия</b>\n\nВыберите срок действия подключения:"
 }
 
+// wizardInputExpiryText returns the prompt for entering custom duration.
 func wizardInputExpiryText() string {
 	return "Введите срок действия в днях (целое число):"
 }
 
+// wizardConfirmText formats the client creation confirmation prompt.
 func wizardConfirmText(sess *wizardSession, ibRemark string) string {
 	var sb strings.Builder
 	sb.WriteString("✅ <b>Подтверждение создания</b>\n\n")
@@ -204,6 +201,7 @@ func wizardConfirmText(sess *wizardSession, ibRemark string) string {
 	return sb.String()
 }
 
+// wizardSuccessText formats the success message with credentials after client creation.
 func wizardSuccessText(email, uri string) string {
 	var sb strings.Builder
 	sb.WriteString("🎉 <b>Клиент успешно создан!</b>\n\n")
@@ -215,19 +213,18 @@ func wizardSuccessText(email, uri string) string {
 	return sb.String()
 }
 
-// ── Подтверждения ───────────────────────────────────────────────────
-
+// confirmDeleteText formats the deletion confirmation warning message.
 func confirmDeleteText(email string) string {
 	return fmt.Sprintf("⚠️ Вы уверены, что хотите <b>удалить</b> клиента <b>%s</b>?\n\n"+
 		"Это действие необратимо.", escapeHTML(email))
 }
 
+// confirmResetText formats the traffic reset confirmation prompt.
 func confirmResetText(email string) string {
 	return fmt.Sprintf("⚠️ Сбросить счётчик трафика для клиента <b>%s</b>?", escapeHTML(email))
 }
 
-// ── Утилиты форматирования ──────────────────────────────────────────
-
+// escapeHTML escapes HTML special characters.
 func escapeHTML(s string) string {
 	replacer := strings.NewReplacer(
 		"&", "&amp;",
@@ -237,6 +234,7 @@ func escapeHTML(s string) string {
 	return replacer.Replace(s)
 }
 
+// formatBytes converts byte counts into human-readable strings.
 func formatBytes(b int64) string {
 	if b <= 0 {
 		return "0 B"
@@ -259,6 +257,7 @@ func formatBytes(b int64) string {
 	return fmt.Sprintf("%.2f %s", value, units[idx])
 }
 
+// formatTime formats a timestamp into a human-readable UTC string.
 func formatTime(t time.Time) string {
 	if t.IsZero() {
 		return "—"
@@ -266,6 +265,7 @@ func formatTime(t time.Time) string {
 	return t.UTC().Format("02.01.2006 15:04") + " UTC"
 }
 
+// formatDuration formats a duration into a human-readable remaining time string.
 func formatDuration(d time.Duration) string {
 	if d <= 0 {
 		return "истёк"

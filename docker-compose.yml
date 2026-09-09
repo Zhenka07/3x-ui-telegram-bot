@@ -1,0 +1,12 @@
+services:
+  admin-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: 3x-ui-admin-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    network_mode: host

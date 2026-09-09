@@ -12,19 +12,19 @@ import (
 	"strings"
 )
 
-const maxErrorBodySize = 2 << 10 // 2 KiB
+const maxErrorBodySize = 2 << 10
 
 var csrfRegex = regexp.MustCompile(`<meta\s+name=["']csrf-token["']\s+content=["']([^"']+)["']`)
 
-// Login выполняет авторизацию в панели и сохраняет сессионную куку в CookieJar.
+// Login authenticates with the 3x-ui panel and stores session cookies in the CookieJar.
 func (c *APIClient) Login(ctx context.Context) error {
 	c.loginMu.Lock()
 	defer c.loginMu.Unlock()
 	return c.loginLocked(ctx)
 }
 
+// loginLocked performs the login HTTP request while holding loginMu.
 func (c *APIClient) loginLocked(ctx context.Context) error {
-	// Предварительный GET для получения сессионных кук и CSRF-токена.
 	getReq, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/", nil)
 	if err == nil {
 		if getResp, err := c.httpClient.Do(getReq); err == nil {
@@ -90,6 +90,7 @@ func (c *APIClient) loginLocked(ctx context.Context) error {
 	return nil
 }
 
+// hasSessionCookie reports whether valid session cookies exist in the cookie jar.
 func (c *APIClient) hasSessionCookie() bool {
 	u := c.baseURL
 	if !strings.HasSuffix(u, "/") {
@@ -110,6 +111,7 @@ func (c *APIClient) hasSessionCookie() bool {
 	return false
 }
 
+// ensureSession verifies that a valid session exists or triggers a new login.
 func (c *APIClient) ensureSession(ctx context.Context) error {
 	c.loginMu.Lock()
 	defer c.loginMu.Unlock()
@@ -120,12 +122,14 @@ func (c *APIClient) ensureSession(ctx context.Context) error {
 	return c.loginLocked(ctx)
 }
 
+// invalidateSession marks the current session as invalid.
 func (c *APIClient) invalidateSession() {
 	c.loginMu.Lock()
 	c.loggedIn = false
 	c.loginMu.Unlock()
 }
 
+// drainAndClose reads remaining response body data and closes it to allow connection reuse.
 func drainAndClose(body io.ReadCloser) {
 	if body == nil {
 		return
@@ -134,6 +138,7 @@ func drainAndClose(body io.ReadCloser) {
 	_ = body.Close()
 }
 
+// truncate limits the byte slice to maxErrorBodySize and returns it as a string.
 func truncate(body []byte) string {
 	trimmed := bytes.TrimSpace(body)
 	if len(trimmed) > maxErrorBodySize {

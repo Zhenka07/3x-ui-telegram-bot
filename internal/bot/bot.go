@@ -1,4 +1,3 @@
-// Package bot реализует Telegram-слой админ-панели на базе telebot.v3.
 package bot
 
 import (
@@ -14,20 +13,18 @@ import (
 	"github.com/zhenya/3x-ui-admin/internal/xui"
 )
 
-// handlerTimeout ограничивает время обработки одного обновления.
 const handlerTimeout = 30 * time.Second
 
-// Bot — Telegram-бот админ-панели 3x-ui.
 type Bot struct {
-	tele *tele.Bot
-	xui  *xui.APIClient
-	log  *slog.Logger
-	cfg  config.Config
-	fsm  *FSM
+	tele  *tele.Bot
+	xui   *xui.APIClient
+	log   *slog.Logger
+	cfg   config.Config
+	fsm   *FSM
 	audit *storage.AuditRepo
 }
 
-// New создаёт и настраивает бота: поллер, middleware и обработчики.
+// New initializes and configures the Telegram admin bot.
 func New(cfg config.Config, xuiClient *xui.APIClient, audit *storage.AuditRepo, log *slog.Logger) (*Bot, error) {
 	if xuiClient == nil {
 		return nil, fmt.Errorf("создание бота: не передан клиент 3x-ui")
@@ -69,7 +66,6 @@ func New(cfg config.Config, xuiClient *xui.APIClient, audit *storage.AuditRepo, 
 	b.registerMiddleware()
 	b.registerHandlers()
 
-	// Периодическая очистка истекших FSM-сессий.
 	go func() {
 		ticker := time.NewTicker(time.Minute)
 		defer ticker.Stop()
@@ -81,26 +77,22 @@ func New(cfg config.Config, xuiClient *xui.APIClient, audit *storage.AuditRepo, 
 	return b, nil
 }
 
-// registerHandlers привязывает обработчики команд и inline-кнопок.
+// registerHandlers registers command and callback query handlers with the bot.
 func (b *Bot) registerHandlers() {
-	// Команды.
 	b.tele.Handle("/start", b.handleStart)
 	b.tele.Handle("/help", b.handleStart)
 	b.tele.Handle("/inbounds", b.handleInbounds)
 	b.tele.Handle("/status", b.handleServerStatus)
 
-	// Inline-кнопки: главное меню.
 	b.tele.Handle("\fmain", b.handleStart)
 	b.tele.Handle("\finbs", b.handleInbounds)
 	b.tele.Handle("\fwiz_start", b.handleWizardStart)
 	b.tele.Handle("\fsys", b.handleServerStatus)
 
-	// Inline-кнопки: инбаунды и клиенты.
 	b.tele.Handle("\finb", b.handleSelectInbound)
 	b.tele.Handle("\fpg", b.handleClientPage)
 	b.tele.Handle("\fcli", b.handleSelectClient)
 
-	// Inline-кнопки: действия с клиентом.
 	b.tele.Handle("\ftgl", b.handleToggleClient)
 	b.tele.Handle("\frst", b.handleResetConfirm)
 	b.tele.Handle("\frst_y", b.handleResetTraffic)
@@ -108,7 +100,6 @@ func (b *Bot) registerHandlers() {
 	b.tele.Handle("\fdel", b.handleDeleteConfirm)
 	b.tele.Handle("\fdel_y", b.handleDeleteClient)
 
-	// Inline-кнопки: конструктор клиента (wizard).
 	b.tele.Handle("\fwiz_inb", b.handleWizardInbound)
 	b.tele.Handle("\fwiz_tf", b.handleWizardTraffic)
 	b.tele.Handle("\fwiz_tf_custom", b.handleWizardTrafficCustom)
@@ -117,7 +108,6 @@ func (b *Bot) registerHandlers() {
 	b.tele.Handle("\fwiz_ok", b.handleWizardConfirm)
 	b.tele.Handle("\fwiz_no", b.handleWizardCancel)
 
-	// Inline-кнопки: конструктор входящего подключения (Inbound).
 	b.tele.Handle("\finb_create_start", b.handleInboundCreateStart)
 	b.tele.Handle("\finb_create_cancel", b.handleInboundCreateCancel)
 	b.tele.Handle("\finb_port_rnd", b.handleInboundPortRandom)
@@ -126,11 +116,10 @@ func (b *Bot) registerHandlers() {
 	b.tele.Handle("\finb_sni_custom", b.handleInboundSNICustom)
 	b.tele.Handle("\finb_create_ok", b.handleInboundConfirmSubmit)
 
-	// Произвольный текст: обрабатывается FSM или как неизвестная команда.
 	b.tele.Handle(tele.OnText, b.handleText)
 }
 
-// Start запускает обработку обновлений и блокируется до отмены контекста.
+// Start begins polling Telegram for updates and blocks until context cancellation.
 func (b *Bot) Start(ctx context.Context) error {
 	stopped := make(chan struct{})
 
@@ -155,13 +144,12 @@ func (b *Bot) Start(ctx context.Context) error {
 	return nil
 }
 
-// withTimeout создаёт контекст с ограничением времени обработки.
+// withTimeout creates a new context with default handler execution timeout.
 func withTimeout() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), handlerTimeout)
 }
 
-// auditLog пишет запись о действии администратора в журнал аудита
-// (не ошибка, если хранилище закрыто или недоступно — только warn в лог).
+// auditLog records an administrative action into the audit storage.
 func (b *Bot) auditLog(c tele.Context, action string, inboundID int, clientEmail, details string) {
 	if b.audit == nil {
 		return

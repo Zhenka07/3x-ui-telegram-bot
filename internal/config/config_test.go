@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// clearEnv unsets all configuration environment variables for testing.
 func clearEnv(t *testing.T) {
 	t.Helper()
 	keys := []string{
@@ -21,6 +22,7 @@ func clearEnv(t *testing.T) {
 	}
 }
 
+// TestConfigValidation_Missing tests that Load fails when required configuration variables are missing.
 func TestConfigValidation_Missing(t *testing.T) {
 	clearEnv(t)
 	t.Setenv("ENV_FILE", "/nonexistent/.env")
@@ -31,6 +33,7 @@ func TestConfigValidation_Missing(t *testing.T) {
 	}
 }
 
+// TestConfigLoad_Success tests loading valid configuration from environment variables.
 func TestConfigLoad_Success(t *testing.T) {
 	clearEnv(t)
 	t.Setenv("ENV_FILE", "/nonexistent/.env")

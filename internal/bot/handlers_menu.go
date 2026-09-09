@@ -6,13 +6,12 @@ import (
 	tele "gopkg.in/telebot.v3"
 )
 
-// handleStart показывает главное меню админки.
+// handleStart displays the main menu of the admin bot.
 func (b *Bot) handleStart(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
 	}
 
-	// Если вызов через команду (не callback), активируем постоянную reply-клавиатуру-дублёр.
 	if c.Callback() == nil {
 		replyMenu := &tele.ReplyMarkup{ResizeKeyboard: true}
 		replyMenu.Reply(
@@ -36,7 +35,7 @@ func (b *Bot) handleStart(c tele.Context) error {
 	})
 }
 
-// handleServerStatus отображает нагрузку сервера и статус Xray.
+// handleServerStatus displays server load metrics and Xray service status.
 func (b *Bot) handleServerStatus(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -63,13 +62,10 @@ func (b *Bot) handleServerStatus(c tele.Context) error {
 	})
 }
 
-// handleText обрабатывает произвольный текст.
-// Если пользователь находится в сессии конструктора — перенаправляет на FSM.
-// Также обрабатывает кнопки Reply-клавиатуры-дублёра.
+// handleText processes arbitrary text messages, routing to the FSM wizard or reply menu actions.
 func (b *Bot) handleText(c tele.Context) error {
 	chatID := c.Chat().ID
 
-	// Если активна сессия конструктора — обрабатываем текст как ввод FSM.
 	if b.fsm.IsActive(chatID) {
 		return b.handleWizardTextInput(c)
 	}

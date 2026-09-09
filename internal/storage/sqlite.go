@@ -1,4 +1,3 @@
-// Package storage реализует persistence на SQLite без CGO (драйвер modernc.org/sqlite).
 package storage
 
 import (
@@ -12,12 +11,11 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// DB — обёртка над *sql.DB с прикладными настройками пула.
 type DB struct {
 	sql *sql.DB
 }
 
-// Open открывает (или создаёт) файл базы данных и применяет миграции.
+// Open opens or creates a SQLite database file and applies migrations.
 func Open(ctx context.Context, path string) (*DB, error) {
 	if path == "" {
 		return nil, fmt.Errorf("путь к базе данных не задан")
@@ -56,12 +54,12 @@ func Open(ctx context.Context, path string) (*DB, error) {
 	return db, nil
 }
 
-// SQL возвращает низкоуровневое соединение.
+// SQL returns the underlying database connection.
 func (d *DB) SQL() *sql.DB {
 	return d.sql
 }
 
-// Close закрывает базу данных.
+// Close closes the database connection.
 func (d *DB) Close() error {
 	if d == nil || d.sql == nil {
 		return nil
@@ -69,6 +67,7 @@ func (d *DB) Close() error {
 	return d.sql.Close()
 }
 
+// migrate applies the database schema migrations.
 func (d *DB) migrate(ctx context.Context) error {
 	query := `
 	CREATE TABLE IF NOT EXISTS audit_logs (

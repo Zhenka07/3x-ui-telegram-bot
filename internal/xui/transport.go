@@ -10,8 +10,7 @@ import (
 	"strings"
 )
 
-// doJSON отправляет запрос к API панели и разбирает конверт ответа.
-// Метод самостоятельно обрабатывает истекшую сессию: выполняет Login и повторяет запрос.
+// doJSON sends a JSON request to the 3x-ui API and unmarshals the response envelope.
 func (c *APIClient) doJSON(ctx context.Context, method, path string, payload any) (*apiResponse, error) {
 	var rawBody []byte
 	if payload != nil {
@@ -72,7 +71,7 @@ func (c *APIClient) doJSON(ctx context.Context, method, path string, payload any
 	return nil, lastErr
 }
 
-// send выполняет один HTTP-запрос и возвращает ответ вместе с прочитанным телом.
+// send executes a single HTTP request and returns the response with its body.
 func (c *APIClient) send(ctx context.Context, method, path string, rawBody []byte) (*http.Response, []byte, error) {
 	endpoint := c.baseURL + path
 
@@ -106,7 +105,7 @@ func (c *APIClient) send(ctx context.Context, method, path string, rawBody []byt
 	return resp, body, nil
 }
 
-// isSessionExpired распознаёт признаки истекшей сессии.
+// isSessionExpired checks whether the HTTP response indicates an expired session.
 func isSessionExpired(resp *http.Response, body []byte) bool {
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		return true

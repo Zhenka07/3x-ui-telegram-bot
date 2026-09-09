@@ -9,8 +9,7 @@ import (
 	"strings"
 )
 
-// ListInbounds возвращает все инбаунды панели с разобранными клиентами
-// и Reality-параметрами.
+// ListInbounds retrieves all inbounds with parsed clients and Reality parameters from 3x-ui.
 func (c *APIClient) ListInbounds(ctx context.Context) ([]Inbound, error) {
 	resp, err := c.doJSON(ctx, "GET", "/panel/api/inbounds/list", nil)
 	if err != nil {
@@ -30,7 +29,7 @@ func (c *APIClient) ListInbounds(ctx context.Context) ([]Inbound, error) {
 	return inbounds, nil
 }
 
-// GetInbound возвращает один инбаунд по его ID.
+// GetInbound retrieves a single inbound by its ID.
 func (c *APIClient) GetInbound(ctx context.Context, id int) (*Inbound, error) {
 	path := fmt.Sprintf("/panel/api/inbounds/get/%d", id)
 	resp, err := c.doJSON(ctx, "GET", path, nil)
@@ -47,13 +46,7 @@ func (c *APIClient) GetInbound(ctx context.Context, id int) (*Inbound, error) {
 	return &ib, nil
 }
 
-// GetServerStatus возвращает информацию о нагрузке сервера и статусе Xray.
-//
-// Эндпоинт статуса различается между версиями панели:
-//   - старые (v2.x и ниже): GET/POST /server/status
-//   - новые (3.x, например 3.7.0): GET /panel/api/server/status
-//
-// Пробуем все варианты по очереди, игнорируя 404.
+// GetServerStatus retrieves system load metrics and Xray core status.
 func (c *APIClient) GetServerStatus(ctx context.Context) (*ServerStatus, error) {
 	endpoints := [][2]string{
 		{"GET", "/panel/api/server/status"},
@@ -72,7 +65,6 @@ func (c *APIClient) GetServerStatus(ctx context.Context) (*ServerStatus, error) 
 			err = nil
 			continue
 		}
-		// Иная ошибка (сеть, авторизация, панель) — прекращаем попытки.
 		break
 	}
 	if err != nil {
@@ -89,8 +81,7 @@ func (c *APIClient) GetServerStatus(ctx context.Context) (*ServerStatus, error) 
 	return &status, nil
 }
 
-// parseInbound конвертирует сырой DTO инбаунда в публичную структуру,
-// парся вложенные JSON-строки settings и streamSettings.
+// parseInbound converts a raw inbound DTO into an Inbound struct.
 func parseInbound(raw rawInbound) Inbound {
 	ib := Inbound{
 		ID:       raw.ID,
@@ -104,7 +95,6 @@ func parseInbound(raw rawInbound) Inbound {
 		Tag:      raw.Tag,
 	}
 
-	// Парсим клиентов из поля settings.
 	if len(raw.Settings) > 0 {
 		if data, ok := decodeObjectJSON(raw.Settings); ok {
 			var settings inboundSettings
@@ -114,7 +104,6 @@ func parseInbound(raw rawInbound) Inbound {
 		}
 	}
 
-	// Парсим Reality-параметры из поля streamSettings.
 	if len(raw.StreamSettings) > 0 {
 		if data, ok := decodeObjectJSON(raw.StreamSettings); ok {
 			var ss streamSettingsJSON
@@ -137,21 +126,17 @@ func parseInbound(raw rawInbound) Inbound {
 	return ib
 }
 
-// decodeObjectJSON принимает json.RawMessage, который в разных версиях панели
-// может быть либо вложенным JSON-объектом, либо JSON-строкой с экранированным
-// JSON внутри. Возвращает байты, которые можно разобрать как объект.
+// decodeObjectJSON unmarshals raw JSON into a byte slice, handling both direct objects and nested JSON strings.
 func decodeObjectJSON(raw json.RawMessage) ([]byte, bool) {
 	trimmed := bytes.TrimSpace(raw)
 	if len(trimmed) == 0 {
 		return nil, false
 	}
 
-	// Если прислали объект/массив напрямую — используем как есть.
 	if trimmed[0] == '{' || trimmed[0] == '[' {
 		return trimmed, true
 	}
 
-	// Если прислали JSON-строку — разворачиваем её во вложенный JSON.
 	var nested string
 	if err := json.Unmarshal(trimmed, &nested); err != nil || strings.TrimSpace(nested) == "" {
 		return nil, false
@@ -159,8 +144,7 @@ func decodeObjectJSON(raw json.RawMessage) ([]byte, bool) {
 	return []byte(nested), true
 }
 
-// FindClient ищет клиента по email в инбаунде.
-// Возвращает nil, если клиент не найден.
+// FindClient searches for a client by email within the inbound.
 func (ib *Inbound) FindClient(email string) *Client {
 	for i := range ib.Clients {
 		if ib.Clients[i].Email == email {
@@ -170,7 +154,7 @@ func (ib *Inbound) FindClient(email string) *Client {
 	return nil
 }
 
-// FindClientByUUID ищет клиента по UUID в инбаунде.
+// FindClientByUUID searches for a client by UUID within the inbound.
 func (ib *Inbound) FindClientByUUID(uuid string) *Client {
 	for i := range ib.Clients {
 		if ib.Clients[i].ID == uuid {
@@ -180,8 +164,7 @@ func (ib *Inbound) FindClientByUUID(uuid string) *Client {
 	return nil
 }
 
-// GetNewX25519Cert запрашивает у панели 3x-ui генерацию новой пары Reality-ключей X25519.
-// Если API панели возвращает 404 или ошибку, генерирует ключи локально через crypto/ecdh.
+// GetNewX25519Cert retrieves a new X25519 Reality key pair from 3x-ui or generates one locally.
 func (c *APIClient) GetNewX25519Cert(ctx context.Context) (*X25519Cert, error) {
 	endpoints := [][2]string{
 		{"GET", "/panel/api/server/getNewX25519Cert"},
@@ -204,7 +187,7 @@ func (c *APIClient) GetNewX25519Cert(ctx context.Context) (*X25519Cert, error) {
 	return GenerateX25519Keys()
 }
 
-// AddInbound создаёт новый VLESS-Reality инбаунд в панели 3x-ui.
+// AddInbound creates a new VLESS-Reality inbound in the 3x-ui panel.
 func (c *APIClient) AddInbound(ctx context.Context, spec CreateInboundSpec) (*Inbound, error) {
 	payload, err := newAddInboundRequest(spec)
 	if err != nil {
@@ -218,14 +201,12 @@ func (c *APIClient) AddInbound(ctx context.Context, spec CreateInboundSpec) (*In
 
 	c.log.Debug("3x-ui: инбаунд успешно создан", "remark", spec.Remark, "port", spec.Port)
 
-	// Разбираем созданный инбаунд из ответа панели
 	var raw rawInbound
 	if err := json.Unmarshal(resp.Obj, &raw); err == nil && raw.ID > 0 {
 		ib := parseInbound(raw)
 		return &ib, nil
 	}
 
-	// Если ответ не содержал полный DTO, ищем созданный инбаунд в списке
 	inbounds, err := c.ListInbounds(ctx)
 	if err == nil {
 		for _, ib := range inbounds {
@@ -235,7 +216,6 @@ func (c *APIClient) AddInbound(ctx context.Context, spec CreateInboundSpec) (*In
 		}
 	}
 
-	// Минимальная fallback-структура
 	return &Inbound{
 		Remark:    spec.Remark,
 		Port:      spec.Port,

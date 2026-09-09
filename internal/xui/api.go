@@ -11,13 +11,12 @@ import (
 	"strings"
 )
 
-// AddClient добавляет нового клиента в указанный инбаунд.
+// AddClient adds a new client to the specified inbound.
 func (c *APIClient) AddClient(ctx context.Context, inboundID int, spec ClientSpec) error {
 	if err := spec.validate(); err != nil {
 		return fmt.Errorf("добавление клиента в инбаунд %d: %w", inboundID, err)
 	}
 
-	// 1. Пробуем v2 API (3x-ui v2.4+).
 	type v2Req struct {
 		Client struct {
 			ID         string `json:"id"`
@@ -50,7 +49,6 @@ func (c *APIClient) AddClient(ctx context.Context, inboundID int, spec ClientSpe
 		return fmt.Errorf("добавление клиента %q в инбаунд %d: %w", spec.Email, inboundID, err)
 	}
 
-	// 2. Фолбэк на legacy API.
 	payload, err := newAddClientRequest(inboundID, spec.toClient())
 	if err != nil {
 		return fmt.Errorf("добавление клиента %q: %w", spec.Email, err)
@@ -63,7 +61,7 @@ func (c *APIClient) AddClient(ctx context.Context, inboundID int, spec ClientSpe
 	return nil
 }
 
-// GetClientTraffics возвращает статистику трафика клиента по его email.
+// GetClientTraffics retrieves client traffic statistics by email.
 func (c *APIClient) GetClientTraffics(ctx context.Context, email string) (*ClientTraffic, error) {
 	trimmed := strings.TrimSpace(email)
 	if trimmed == "" {
@@ -111,12 +109,7 @@ func (c *APIClient) GetClientTraffics(ctx context.Context, email string) (*Clien
 	}, nil
 }
 
-// DeleteClient удаляет клиента из инбаунда по его UUID и email.
-//
-// Эндпоинты различаются между версиями панели:
-//   - новые (3.x): POST /panel/api/clients/del/{email}?keepTraffic=0
-//   - старые (v2.x): POST /panel/api/clients/del/{uuid}?keepTraffic=0,
-//     а также legacy POST /panel/api/inbounds/{id}/delClient/{uuid}.
+// DeleteClient deletes a client from the specified inbound by UUID and email.
 func (c *APIClient) DeleteClient(ctx context.Context, inboundID int, uuid, email string) error {
 	trimmedUUID := strings.TrimSpace(uuid)
 	trimmedEmail := strings.TrimSpace(email)
@@ -131,7 +124,6 @@ func (c *APIClient) DeleteClient(ctx context.Context, inboundID int, uuid, email
 		return err
 	}
 
-	// 1. Пробуем v2 API по UUID (старые панели 2.x).
 	if trimmedUUID != "" {
 		if err := attempt(trimmedUUID); err == nil {
 			c.log.Debug("3x-ui: клиент удалён (v2 uuid)", "uuid", trimmedUUID)
@@ -141,7 +133,6 @@ func (c *APIClient) DeleteClient(ctx context.Context, inboundID int, uuid, email
 		}
 	}
 
-	// 2. Пробуем v2 API по email (новые панели 3.x).
 	if trimmedEmail != "" {
 		if err := attempt(trimmedEmail); err == nil {
 			c.log.Debug("3x-ui: клиент удалён (v2 email)", "email", trimmedEmail)
@@ -151,7 +142,6 @@ func (c *APIClient) DeleteClient(ctx context.Context, inboundID int, uuid, email
 		}
 	}
 
-	// 3. Фолбэк на legacy API по UUID.
 	path := fmt.Sprintf("/panel/api/inbounds/%d/delClient/%s", inboundID, url.PathEscape(trimmedUUID))
 	if _, err := c.doJSON(ctx, "POST", path, nil); err != nil {
 		fallbackPath := fmt.Sprintf("/panel/api/inbounds/delClient/%s", url.PathEscape(trimmedUUID))
@@ -167,21 +157,12 @@ func (c *APIClient) DeleteClient(ctx context.Context, inboundID int, uuid, email
 	return nil
 }
 
-// UpdateClient обновляет параметры существующего клиента.
-//
-// Эндпоинт и тела запроса различаются между версиями панели:
-//   - новые (3.x): POST /panel/api/clients/update/{email} с полями клиента
-//     в теле на верхнем уровне (JSON).
-//   - старые (v2.x): POST /panel/api/inbounds/updateClient/{uuid} с телом
-//     {"id": <inboundId>, "settings": "<JSON-строка>"}.
-//
-// Пробуем v2 первым, при 404/несовпадении контракта — фолбэк на legacy.
+// UpdateClient updates parameters of an existing client in the inbound.
 func (c *APIClient) UpdateClient(ctx context.Context, inboundID int, spec ClientSpec) error {
 	if err := spec.validate(); err != nil {
 		return fmt.Errorf("обновление клиента в инбаунде %d: %w", inboundID, err)
 	}
 
-	// 1. Пробуем v2 API панелей 3.x.
 	type v2Body struct {
 		ID         string `json:"id"`
 		Email      string `json:"email"`
@@ -210,7 +191,6 @@ func (c *APIClient) UpdateClient(ctx context.Context, inboundID int, spec Client
 		return nil
 	}
 
-	// 2. Фолбэк на legacy API.
 	payload, err := newAddClientRequest(inboundID, spec.toClient())
 	if err != nil {
 		return fmt.Errorf("обновление клиента %q: %w", spec.Email, err)
@@ -225,25 +205,19 @@ func (c *APIClient) UpdateClient(ctx context.Context, inboundID int, spec Client
 	return nil
 }
 
-// ResetClientTraffic сбрасывает счётчик трафика клиента.
-//
-// В новых версиях панели (3.x) сброс выполняется по v2-эндпоинту
-// POST /panel/api/clients/resetTraffic/{email}, в старых —
-// POST /panel/api/inbounds/{id}/resetClientTraffic/{email}.
+// ResetClientTraffic resets the traffic counter for a client.
 func (c *APIClient) ResetClientTraffic(ctx context.Context, inboundID int, email string) error {
 	trimmed := strings.TrimSpace(email)
 	if trimmed == "" {
 		return fmt.Errorf("сброс трафика: не задан email клиента")
 	}
 
-	// 1. Пробуем v2 API панелей 3.x.
 	pathV2 := "/panel/api/clients/resetTraffic/" + url.PathEscape(trimmed)
 	if _, err := c.doJSON(ctx, "POST", pathV2, nil); err == nil {
 		c.log.Debug("3x-ui: трафик сброшен (v2)", "email", trimmed)
 		return nil
 	}
 
-	// 2. Фолбэк на legacy API.
 	path := fmt.Sprintf("/panel/api/inbounds/%d/resetClientTraffic/%s", inboundID, url.PathEscape(trimmed))
 	if _, err := c.doJSON(ctx, "POST", path, nil); err != nil {
 		return fmt.Errorf("сброс трафика клиента %q: %w", trimmed, err)

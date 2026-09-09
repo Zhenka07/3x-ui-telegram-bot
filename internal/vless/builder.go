@@ -1,5 +1,3 @@
-// Package vless отвечает за формирование клиентских конфигураций
-// VLESS-Reality: ссылок vless:// и QR-кодов к ним.
 package vless
 
 import (
@@ -10,7 +8,6 @@ import (
 	"strings"
 )
 
-// Params — параметры Reality-инбаунда для сборки ссылки.
 type Params struct {
 	ServerAddr  string
 	Port        int
@@ -23,12 +20,11 @@ type Params struct {
 	Tag         string
 }
 
-// Builder собирает ссылки vless:// на основе параметров инбаунда.
 type Builder struct {
 	params Params
 }
 
-// NewBuilder создаёт билдер и валидирует обязательные параметры.
+// NewBuilder creates a new Builder and validates required parameters.
 func NewBuilder(params Params) (*Builder, error) {
 	if strings.TrimSpace(params.ServerAddr) == "" {
 		return nil, fmt.Errorf("создание билдера vless: не задан адрес сервера")
@@ -45,12 +41,7 @@ func NewBuilder(params Params) (*Builder, error) {
 	return &Builder{params: params}, nil
 }
 
-// BuildURI формирует ссылку подключения для указанного UUID.
-//
-// Формат:
-//
-//	vless://{UUID}@{HOST}:{PORT}?type=tcp&security=reality&pbk={PBK}
-//	  &fp={FP}&sni={SNI}&sid={SID}&spx=%2F&flow=xtls-rprx-vision#{TAG}
+// BuildURI generates a VLESS connection URI for the specified UUID and label.
 func (b *Builder) BuildURI(uuid, label string) (string, error) {
 	trimmedUUID := strings.TrimSpace(uuid)
 	if trimmedUUID == "" {
@@ -91,7 +82,7 @@ func (b *Builder) BuildURI(uuid, label string) (string, error) {
 	return uri, nil
 }
 
-// hostPort корректно склеивает адрес и порт, оборачивая IPv6 в скобки.
+// hostPort formats an address and port into a host:port string, wrapping IPv6 addresses in brackets.
 func hostPort(addr string, port int) string {
 	trimmed := strings.TrimSpace(addr)
 	if strings.HasPrefix(trimmed, "[") {

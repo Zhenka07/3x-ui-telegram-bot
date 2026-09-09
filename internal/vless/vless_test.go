@@ -8,6 +8,7 @@ import (
 	"github.com/zhenya/3x-ui-admin/internal/xui"
 )
 
+// TestBuildURI_ExactFormat tests generating a VLESS URI with exact expected formatting.
 func TestBuildURI_ExactFormat(t *testing.T) {
 	builder, err := NewBuilder(Params{
 		ServerAddr:  "198.51.100.1",
@@ -36,6 +37,7 @@ func TestBuildURI_ExactFormat(t *testing.T) {
 	}
 }
 
+// TestParseInboundReality tests extracting Reality parameters from an Inbound object.
 func TestParseInboundReality(t *testing.T) {
 	ib := &xui.Inbound{
 		ID:        1,
@@ -66,6 +68,7 @@ func TestParseInboundReality(t *testing.T) {
 	}
 }
 
+// TestGenerateQR tests generating a QR code PNG image.
 func TestGenerateQR(t *testing.T) {
 	pngData, err := GenerateQR("vless://test", 256)
 	if err != nil {
@@ -78,6 +81,7 @@ func TestGenerateQR(t *testing.T) {
 	}
 }
 
+// TestNewUUID tests generating a valid RFC 4122 UUIDv4.
 func TestNewUUID(t *testing.T) {
 	id, err := NewUUID()
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// TestDecodeObjectJSON tests decoding both direct JSON objects and legacy escaped JSON strings.
 func TestDecodeObjectJSON(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -45,6 +46,7 @@ func TestDecodeObjectJSON(t *testing.T) {
 	}
 }
 
+// TestParseInbound_ObjectFormat tests parsing inbound configuration in modern JSON object format.
 func TestParseInbound_ObjectFormat(t *testing.T) {
 	raw := rawInbound{
 		ID:             1,
@@ -74,6 +76,7 @@ func TestParseInbound_ObjectFormat(t *testing.T) {
 	}
 }
 
+// TestParseInbound_LegacyStringFormat tests parsing inbound configuration in legacy JSON string format.
 func TestParseInbound_LegacyStringFormat(t *testing.T) {
 	raw := rawInbound{
 		ID:             2,
@@ -97,6 +100,7 @@ func TestParseInbound_LegacyStringFormat(t *testing.T) {
 	}
 }
 
+// TestNewAddInboundRequest tests serializing the request payload for adding a new inbound.
 func TestNewAddInboundRequest(t *testing.T) {
 	spec := CreateInboundSpec{
 		Remark:     "My-Test-Inbound",
@@ -132,6 +136,7 @@ func TestNewAddInboundRequest(t *testing.T) {
 	}
 }
 
+// TestGenerateX25519Keys tests local X25519 key pair generation and short ID generation.
 func TestGenerateX25519Keys(t *testing.T) {
 	cert, err := GenerateX25519Keys()
 	if err != nil {

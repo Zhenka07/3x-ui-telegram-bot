@@ -12,7 +12,7 @@ import (
 	"github.com/zhenya/3x-ui-admin/internal/xui"
 )
 
-// handleSelectClient показывает карточку клиента с действиями.
+// handleSelectClient displays the client details card with available actions.
 func (b *Bot) handleSelectClient(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -37,13 +37,11 @@ func (b *Bot) handleSelectClient(c tele.Context) error {
 		return c.Send(fmt.Sprintf("⚠️ Клиент %q не найден в инбаунде.", email))
 	}
 
-	// Пробуем получить трафик (некритично при ошибке).
 	var traffic *xui.ClientTraffic
 	if t, err := b.xui.GetClientTraffics(ctx, email); err == nil {
 		traffic = t
 	}
 
-	// Кнопки действий.
 	menu := &tele.ReplyMarkup{}
 	cbData := fmt.Sprintf("%d|%s", inboundID, email)
 
@@ -70,7 +68,7 @@ func (b *Bot) handleSelectClient(c tele.Context) error {
 	})
 }
 
-// handleToggleClient переключает статус клиента (вкл/выкл).
+// handleToggleClient toggles the client enabled status.
 func (b *Bot) handleToggleClient(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -123,11 +121,10 @@ func (b *Bot) handleToggleClient(c tele.Context) error {
 	b.log.Info("клиент переключён", "email", email, "action", action)
 	b.auditLog(c, "client_toggle", inboundID, email, action)
 
-	// Перерисовываем карточку.
 	return b.handleSelectClient(c)
 }
 
-// handleResetConfirm показывает подтверждение сброса трафика.
+// handleResetConfirm shows a confirmation dialog for resetting client traffic.
 func (b *Bot) handleResetConfirm(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -153,7 +150,7 @@ func (b *Bot) handleResetConfirm(c tele.Context) error {
 	})
 }
 
-// handleResetTraffic сбрасывает трафик клиента.
+// handleResetTraffic resets the client traffic counters.
 func (b *Bot) handleResetTraffic(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -175,11 +172,10 @@ func (b *Bot) handleResetTraffic(c tele.Context) error {
 	b.log.Info("трафик сброшен", "email", email, "inbound", inboundID)
 	b.auditLog(c, "client_reset", inboundID, email, "")
 
-	// Перерисовываем карточку.
 	return b.handleSelectClient(c)
 }
 
-// handleDeleteConfirm показывает подтверждение удаления.
+// handleDeleteConfirm shows a confirmation dialog for deleting a client.
 func (b *Bot) handleDeleteConfirm(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -205,7 +201,7 @@ func (b *Bot) handleDeleteConfirm(c tele.Context) error {
 	})
 }
 
-// handleDeleteClient удаляет клиента из инбаунда.
+// handleDeleteClient deletes the client from the inbound.
 func (b *Bot) handleDeleteClient(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -219,7 +215,6 @@ func (b *Bot) handleDeleteClient(c tele.Context) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
-	// Нужно получить UUID клиента для удаления.
 	ib, err := b.xui.GetInbound(ctx, inboundID)
 	if err != nil {
 		return c.Send("⚠️ Не удалось загрузить инбаунд.")
@@ -248,7 +243,7 @@ func (b *Bot) handleDeleteClient(c tele.Context) error {
 	})
 }
 
-// handleGenerateLink генерирует vless:// ссылку и QR-код для клиента.
+// handleGenerateLink generates a VLESS link and QR code for the client.
 func (b *Bot) handleGenerateLink(c tele.Context) error {
 	if c.Callback() != nil {
 		_ = c.Respond()
@@ -290,7 +285,6 @@ func (b *Bot) handleGenerateLink(c tele.Context) error {
 	if err := c.Send(photo, &tele.SendOptions{
 		ParseMode: tele.ModeHTML,
 	}); err != nil {
-		// Фолбэк: отправляем только текст.
 		return c.Send(fmt.Sprintf("🔗 <b>%s</b>\n\n<code>%s</code>", escapeHTML(email), escapeHTML(uri)), &tele.SendOptions{
 			ParseMode: tele.ModeHTML,
 		})
@@ -298,7 +292,7 @@ func (b *Bot) handleGenerateLink(c tele.Context) error {
 	return nil
 }
 
-// buildClientLink собирает vless:// ссылку и QR-код на основе параметров инбаунда.
+// buildClientLink constructs a VLESS URI and QR code based on inbound and client parameters.
 func (b *Bot) buildClientLink(ib *xui.Inbound, client *xui.Client) (string, []byte, error) {
 	params, err := vless.ParseInboundReality(b.cfg.ServerHost, ib, client.Flow)
 	if err != nil {
@@ -323,7 +317,7 @@ func (b *Bot) buildClientLink(ib *xui.Inbound, client *xui.Client) (string, []by
 	return uri, qr, nil
 }
 
-// parseInboundEmail разбирает callback data формата "inbound_id|email".
+// parseInboundEmail parses callback data formatted as inboundID|email.
 func parseInboundEmail(data string) (int, string, error) {
 	parts := strings.SplitN(data, "|", 2)
 	if len(parts) != 2 {

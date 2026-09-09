@@ -11,8 +11,7 @@ const (
 	maxQRSize     = 2048
 )
 
-// GenerateQR возвращает PNG-изображение QR-кода для переданного содержимого.
-// Изображение формируется полностью в памяти.
+// GenerateQR generates a PNG image of a QR code for the provided content in memory.
 func GenerateQR(content string, size int) ([]byte, error) {
 	if content == "" {
 		return nil, fmt.Errorf("генерация QR-кода: пустое содержимое")
