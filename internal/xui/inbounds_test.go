@@ -96,3 +96,56 @@ func TestParseInbound_LegacyStringFormat(t *testing.T) {
 		t.Errorf("failed to parse legacy reality settings: %+v", ib.Reality)
 	}
 }
+
+func TestNewAddInboundRequest(t *testing.T) {
+	spec := CreateInboundSpec{
+		Remark:     "My-Test-Inbound",
+		Port:       443,
+		DestDomain: "apple.com",
+		PrivateKey: "priv123",
+		PublicKey:  "pub123",
+		ShortID:    "short123",
+	}
+
+	req, err := newAddInboundRequest(spec)
+	if err != nil {
+		t.Fatalf("newAddInboundRequest() error = %v", err)
+	}
+
+	if req.Remark != "My-Test-Inbound" || req.Port != 443 || req.Protocol != "vless" {
+		t.Errorf("unexpected request header: %+v", req)
+	}
+
+	var stream inboundStreamPayload
+	if err := json.Unmarshal([]byte(req.StreamSettings), &stream); err != nil {
+		t.Fatalf("unmarshal streamSettings error = %v", err)
+	}
+
+	if stream.Security != "reality" {
+		t.Errorf("expected security reality, got %s", stream.Security)
+	}
+	if stream.RealitySettings.Dest != "apple.com:443" {
+		t.Errorf("expected dest apple.com:443, got %s", stream.RealitySettings.Dest)
+	}
+	if stream.RealitySettings.PrivateKey != "priv123" || stream.RealitySettings.Settings.PublicKey != "pub123" {
+		t.Errorf("unexpected keys in stream: %+v", stream.RealitySettings)
+	}
+}
+
+func TestGenerateX25519Keys(t *testing.T) {
+	cert, err := GenerateX25519Keys()
+	if err != nil {
+		t.Fatalf("GenerateX25519Keys() error = %v", err)
+	}
+	if len(cert.PrivateKey) != 43 {
+		t.Errorf("expected privateKey length 43, got %d (%s)", len(cert.PrivateKey), cert.PrivateKey)
+	}
+	if len(cert.PublicKey) != 43 {
+		t.Errorf("expected publicKey length 43, got %d (%s)", len(cert.PublicKey), cert.PublicKey)
+	}
+
+	shortID := GenerateShortID()
+	if len(shortID) != 16 {
+		t.Errorf("expected shortId length 16, got %d (%s)", len(shortID), shortID)
+	}
+}

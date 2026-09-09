@@ -108,7 +108,7 @@ func (b *Bot) registerHandlers() {
 	b.tele.Handle("\fdel", b.handleDeleteConfirm)
 	b.tele.Handle("\fdel_y", b.handleDeleteClient)
 
-	// Inline-кнопки: конструктор (wizard).
+	// Inline-кнопки: конструктор клиента (wizard).
 	b.tele.Handle("\fwiz_inb", b.handleWizardInbound)
 	b.tele.Handle("\fwiz_tf", b.handleWizardTraffic)
 	b.tele.Handle("\fwiz_tf_custom", b.handleWizardTrafficCustom)
@@ -116,6 +116,15 @@ func (b *Bot) registerHandlers() {
 	b.tele.Handle("\fwiz_ex_custom", b.handleWizardExpiryCustom)
 	b.tele.Handle("\fwiz_ok", b.handleWizardConfirm)
 	b.tele.Handle("\fwiz_no", b.handleWizardCancel)
+
+	// Inline-кнопки: конструктор входящего подключения (Inbound).
+	b.tele.Handle("\finb_create_start", b.handleInboundCreateStart)
+	b.tele.Handle("\finb_create_cancel", b.handleInboundCreateCancel)
+	b.tele.Handle("\finb_port_rnd", b.handleInboundPortRandom)
+	b.tele.Handle("\finb_port_443", b.handleInboundPort443)
+	b.tele.Handle("\finb_sni", b.handleInboundSNISelect)
+	b.tele.Handle("\finb_sni_custom", b.handleInboundSNICustom)
+	b.tele.Handle("\finb_create_ok", b.handleInboundConfirmSubmit)
 
 	// Произвольный текст: обрабатывается FSM или как неизвестная команда.
 	b.tele.Handle(tele.OnText, b.handleText)

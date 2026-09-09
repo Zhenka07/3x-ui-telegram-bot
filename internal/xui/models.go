@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -50,6 +51,22 @@ type RealityInfo struct {
 	Fingerprint string
 	SpiderX     string
 	Dest        string
+}
+
+// X25519Cert — пара ключей x25519 для Reality.
+type X25519Cert struct {
+	PrivateKey string `json:"privateKey"`
+	PublicKey  string `json:"publicKey"`
+}
+
+// CreateInboundSpec — спецификация для создания нового инбаунда VLESS-Reality.
+type CreateInboundSpec struct {
+	Remark     string
+	Port       int
+	DestDomain string // например, "gateway.icloud.com" или "apple.com"
+	PrivateKey string
+	PublicKey  string
+	ShortID    string
 }
 
 // ServerStatus — системный статус хоста и ядра Xray из 3x-ui.
@@ -245,6 +262,106 @@ func newAddClientRequest(inboundID int, clients ...Client) (*addClientRequest, e
 	return &addClientRequest{
 		ID:       inboundID,
 		Settings: string(encoded),
+	}, nil
+}
+
+// addInboundRequest — пейлоад POST /panel/api/inbounds/add.
+type addInboundRequest struct {
+	Remark         string `json:"remark"`
+	Port           int    `json:"port"`
+	Protocol       string `json:"protocol"`
+	Enable         bool   `json:"enable"`
+	Listen         string `json:"listen"`
+	Total          int64  `json:"total"`
+	ExpiryTime     int64  `json:"expiryTime"`
+	Settings       string `json:"settings"`
+	Sniffing       string `json:"sniffing"`
+	StreamSettings string `json:"streamSettings"`
+}
+
+type inboundStreamPayload struct {
+	Network         string                `json:"network"`
+	Security        string                `json:"security"`
+	RealitySettings inboundRealityPayload `json:"realitySettings"`
+}
+
+type inboundRealityPayload struct {
+	Show        bool                      `json:"show"`
+	Xver        int                       `json:"xver"`
+	Target      string                    `json:"target"`
+	Dest        string                    `json:"dest"`
+	ServerNames []string                  `json:"serverNames"`
+	PrivateKey  string                    `json:"privateKey"`
+	ShortIds    []string                  `json:"shortIds"`
+	Settings    inboundRealitySubSettings `json:"settings"`
+}
+
+type inboundRealitySubSettings struct {
+	PublicKey   string `json:"publicKey"`
+	Fingerprint string `json:"fingerprint"`
+	ServerName  string `json:"serverName"`
+	SpiderX     string `json:"spiderX"`
+}
+
+// newAddInboundRequest формирует запрос на создание Reality-инбаунда.
+func newAddInboundRequest(spec CreateInboundSpec) (*addInboundRequest, error) {
+	if strings.TrimSpace(spec.Remark) == "" {
+		return nil, fmt.Errorf("не указано название инбаунда (remark)")
+	}
+	if spec.Port < 1 || spec.Port > 65535 {
+		return nil, fmt.Errorf("некорректный порт: %d", spec.Port)
+	}
+	trimmedDomain := strings.TrimSpace(spec.DestDomain)
+	if trimmedDomain == "" {
+		return nil, fmt.Errorf("не указан домен маскировки (dest)")
+	}
+
+	destWithPort := trimmedDomain
+	if !strings.Contains(destWithPort, ":") {
+		destWithPort += ":443"
+	}
+
+	serverNames := []string{trimmedDomain}
+	if !strings.HasPrefix(trimmedDomain, "www.") {
+		serverNames = append(serverNames, "www."+trimmedDomain)
+	}
+
+	stream := inboundStreamPayload{
+		Network:  "tcp",
+		Security: "reality",
+		RealitySettings: inboundRealityPayload{
+			Show:        false,
+			Xver:        0,
+			Target:      destWithPort,
+			Dest:        destWithPort,
+			ServerNames: serverNames,
+			PrivateKey:  spec.PrivateKey,
+			ShortIds:    []string{spec.ShortID},
+			Settings: inboundRealitySubSettings{
+				PublicKey:   spec.PublicKey,
+				Fingerprint: "chrome",
+				ServerName:  "",
+				SpiderX:     "/",
+			},
+		},
+	}
+
+	streamEncoded, err := json.Marshal(stream)
+	if err != nil {
+		return nil, fmt.Errorf("сериализация streamSettings: %w", err)
+	}
+
+	return &addInboundRequest{
+		Remark:         spec.Remark,
+		Port:           spec.Port,
+		Protocol:       "vless",
+		Enable:         true,
+		Listen:         "",
+		Total:          0,
+		ExpiryTime:     0,
+		Settings:       `{"clients":[],"decryption":"none","fallbacks":[]}`,
+		Sniffing:       `{"enabled":true,"destOverride":["http","tls","quic","fakedns"]}`,
+		StreamSettings: string(streamEncoded),
 	}, nil
 }
 

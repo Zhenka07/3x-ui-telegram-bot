@@ -179,3 +179,68 @@ func (ib *Inbound) FindClientByUUID(uuid string) *Client {
 	}
 	return nil
 }
+
+// GetNewX25519Cert запрашивает у панели 3x-ui генерацию новой пары Reality-ключей X25519.
+// Если API панели возвращает 404 или ошибку, генерирует ключи локально через crypto/ecdh.
+func (c *APIClient) GetNewX25519Cert(ctx context.Context) (*X25519Cert, error) {
+	endpoints := [][2]string{
+		{"GET", "/panel/api/server/getNewX25519Cert"},
+		{"GET", "/server/getNewX25519Cert"},
+		{"POST", "/server/getNewX25519Cert"},
+	}
+
+	for _, ep := range endpoints {
+		resp, err := c.doJSON(ctx, ep[0], ep[1], nil)
+		if err == nil && resp != nil && len(resp.Obj) > 0 {
+			var cert X25519Cert
+			if err := json.Unmarshal(resp.Obj, &cert); err == nil && cert.PrivateKey != "" && cert.PublicKey != "" {
+				c.log.Debug("3x-ui: получены X25519 ключи от панели", "endpoint", ep[1])
+				return &cert, nil
+			}
+		}
+	}
+
+	c.log.Warn("3x-ui: API генерации X25519 недоступен, генерируем ключи локально")
+	return GenerateX25519Keys()
+}
+
+// AddInbound создаёт новый VLESS-Reality инбаунд в панели 3x-ui.
+func (c *APIClient) AddInbound(ctx context.Context, spec CreateInboundSpec) (*Inbound, error) {
+	payload, err := newAddInboundRequest(spec)
+	if err != nil {
+		return nil, fmt.Errorf("подготовка запроса создания инбаунда: %w", err)
+	}
+
+	resp, err := c.doJSON(ctx, "POST", "/panel/api/inbounds/add", payload)
+	if err != nil {
+		return nil, fmt.Errorf("создание инбаунда %q: %w", spec.Remark, err)
+	}
+
+	c.log.Debug("3x-ui: инбаунд успешно создан", "remark", spec.Remark, "port", spec.Port)
+
+	// Разбираем созданный инбаунд из ответа панели
+	var raw rawInbound
+	if err := json.Unmarshal(resp.Obj, &raw); err == nil && raw.ID > 0 {
+		ib := parseInbound(raw)
+		return &ib, nil
+	}
+
+	// Если ответ не содержал полный DTO, ищем созданный инбаунд в списке
+	inbounds, err := c.ListInbounds(ctx)
+	if err == nil {
+		for _, ib := range inbounds {
+			if ib.Port == spec.Port && ib.Remark == spec.Remark {
+				return &ib, nil
+			}
+		}
+	}
+
+	// Минимальная fallback-структура
+	return &Inbound{
+		Remark:    spec.Remark,
+		Port:      spec.Port,
+		Protocol:  "vless",
+		Enable:    true,
+		IsReality: true,
+	}, nil
+}

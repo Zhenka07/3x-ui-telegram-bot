@@ -17,6 +17,13 @@ const (
 	stateSelectExpiry              // Выбор срока действия
 	stateInputExpiry               // Ручной ввод срока действия
 	stateConfirm                   // Подтверждение создания
+
+	// Состояния FSM для создания входящего подключения (Inbound):
+	stateInboundWaitRemark    // Ожидание ввода названия (Remark)
+	stateInboundWaitPort      // Ожидание ввода или выбора порта
+	stateInboundWaitSNI       // Выбор домена маскировки
+	stateInboundWaitSNICustom // Ручной ввод домена маскировки
+	stateInboundConfirm       // Подтверждение создания Inbound
 )
 
 // sessionTimeout — время жизни неактивной сессии конструктора.
@@ -24,11 +31,22 @@ const sessionTimeout = 5 * time.Minute
 
 // wizardSession — данные одной FSM-сессии конструктора.
 type wizardSession struct {
-	State     wizardState
-	InboundID int
-	Email     string
-	TrafficGB int64 // 0 = безлимит
-	ExpiryDays int  // 0 = бессрочно
+	State wizardState
+
+	// Данные для мастера клиента:
+	InboundID  int
+	Email      string
+	TrafficGB  int64 // 0 = безлимит
+	ExpiryDays int   // 0 = бессрочно
+
+	// Данные для мастера создания Inbound:
+	InboundRemark     string
+	InboundPort       int
+	InboundSNI        string
+	InboundPrivateKey string
+	InboundPublicKey  string
+	InboundShortID    string
+
 	UpdatedAt time.Time
 }
 
@@ -49,6 +67,12 @@ func (s *wizardSession) reset() {
 	s.Email = ""
 	s.TrafficGB = 0
 	s.ExpiryDays = 0
+	s.InboundRemark = ""
+	s.InboundPort = 0
+	s.InboundSNI = ""
+	s.InboundPrivateKey = ""
+	s.InboundPublicKey = ""
+	s.InboundShortID = ""
 	s.UpdatedAt = time.Now()
 }
 
