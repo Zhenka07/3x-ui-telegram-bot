@@ -5,73 +5,73 @@
 ## 1. System Requirements
 
 - Linux server running Ubuntu 22.04+, Debian 12+, or RHEL/AlmaLinux 9+;
-- an installed and running MHSanaei/3x-ui panel instance;
-- Go 1.22+ compiler or installed Docker Compose;
+- installed and configured MHSanaei/3x-ui management panel;
 - dedicated Telegram bot token for the administrator from @BotFather;
 - SSH access with `root` or `sudo` privileges.
 
 ## 2. Installing the 3x-ui Panel
 
-Official installation script for the latest stable release of MHSanaei/3x-ui:
+Official installation script for the latest release of the MHSanaei/3x-ui panel:
 
 ```bash
 bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
 ```
 
-During installation, configure the web panel port (default 2053), admin username, and password.
+During installation, specify the web panel port (default 2053), admin username, and password.
 
-## 3. Obtaining the Source Code
+## 3. Option 1: Deployment via Docker
+
+Clone the project repository to the server:
 
 ```bash
 git clone https://github.com/Zhenka07/3x-ui-telegram-bot.git
 cd 3x-ui-telegram-bot
 ```
 
-## 4. Quick Deployment and Updates via deploy.sh
+Create the `.env` configuration file from the template and fill in panel credentials and bot token:
 
-The `deploy.sh` script compiles the Linux binary, uploads it to the server over SSH, and restarts the service:
+```bash
+cp .env.example .env
+nano .env
+```
+
+Start the bot container with automatic image building:
+
+```bash
+docker compose up -d --build
+```
+
+View bot runtime logs in real time:
+
+```bash
+docker compose logs -f admin-bot
+```
+
+## 4. Option 2: Transferring Binary and .env File
+
+Automated build and upload using the `deploy.sh` script:
 
 ```bash
 chmod +x deploy.sh
 ./deploy.sh <SERVER_IP>
 ```
 
-The script verifies `.env` presence, atomically replaces the executable file, and checks service status.
-
-## 5. Deployment with Docker
-
-To deploy using Docker Compose, copy `.env.example` to `.env`, configure parameters, and launch the container:
-
-```bash
-cp .env.example .env
-docker compose up -d --build
-```
-
-View container logs in real time:
-
-```bash
-docker compose logs -f admin-bot
-```
-
-## 6. Manual Build and Systemd Setup
-
-Build a static standalone binary without CGO:
+Manual approach: compile a static standalone binary without CGO on the local machine:
 
 ```bash
 CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o admin-bot ./cmd/admin
 ```
 
-Create the working directory and copy required files:
+Upload the binary and `.env` configuration file to the server and set proper permissions:
 
 ```bash
-sudo mkdir -p /opt/3x-ui-admin
-sudo cp admin-bot /opt/3x-ui-admin/admin-bot
-sudo chmod 755 /opt/3x-ui-admin/admin-bot
-sudo cp .env.example /opt/3x-ui-admin/.env
-sudo chmod 600 /opt/3x-ui-admin/.env
+ssh root@SERVER_IP "mkdir -p /opt/3x-ui-admin"
+scp admin-bot root@SERVER_IP:/opt/3x-ui-admin/admin-bot
+scp .env root@SERVER_IP:/opt/3x-ui-admin/.env
+ssh root@SERVER_IP "chmod 755 /opt/3x-ui-admin/admin-bot && chmod 600 /opt/3x-ui-admin/.env"
 ```
 
-Configure the `/etc/systemd/system/admin-bot.service` file:
+Configure the systemd service file `/etc/systemd/system/admin-bot.service`:
 
 ```ini
 [Unit]
@@ -96,7 +96,7 @@ SyslogIdentifier=admin-bot
 WantedBy=multi-user.target
 ```
 
-Enable and start the service:
+Enable and start the service via systemd:
 
 ```bash
 sudo cp admin-bot.service /etc/systemd/system/admin-bot.service
@@ -104,7 +104,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now admin-bot.service
 ```
 
-## 7. Verifying Status and Logs
+## 5. Verifying Status and Logs
 
 Verify that the service is running and processing incoming updates:
 
