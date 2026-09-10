@@ -395,4 +395,35 @@ func cleanEmails(items []string) []string {
 	return out
 }
 
+// GetLogs retrieves recent logs from the 3x-ui panel API.
+func (c *APIClient) GetLogs(ctx context.Context, count int) (string, error) {
+	if count <= 0 {
+		count = 50
+	}
+
+	endpoints := []string{
+		fmt.Sprintf("/panel/api/server/logs/%d", count),
+		fmt.Sprintf("/server/getLogs/%d", count),
+		"/panel/api/server/logs",
+	}
+
+	for _, ep := range endpoints {
+		resp, err := c.doJSON(ctx, "GET", ep, nil)
+		if err == nil && resp != nil && len(resp.Obj) > 0 {
+			var strLog string
+			if err := json.Unmarshal(resp.Obj, &strLog); err == nil && strLog != "" {
+				return strLog, nil
+			}
+			var sliceLog []string
+			if err := json.Unmarshal(resp.Obj, &sliceLog); err == nil && len(sliceLog) > 0 {
+				return strings.Join(sliceLog, "\n"), nil
+			}
+			return string(resp.Obj), nil
+		}
+	}
+
+	return "", fmt.Errorf("логи недоступны через API панели")
+}
+
+
 

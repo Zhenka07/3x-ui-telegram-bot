@@ -125,3 +125,36 @@ func (t *Tunnel) Close() error {
 	}
 	return nil
 }
+
+// ExecuteCommand executes a remote shell command via SSH and returns its combined output.
+func (t *Tunnel) ExecuteCommand(ctx context.Context, cmd string) (string, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.client == nil {
+		if err := t.connectLocked(); err != nil {
+			return "", err
+		}
+	}
+
+	session, err := t.client.NewSession()
+	if err != nil {
+		_ = t.client.Close()
+		t.client = nil
+		if recErr := t.connectLocked(); recErr != nil {
+			return "", fmt.Errorf("переподключение SSH: %w (первичная ошибка: %v)", recErr, err)
+		}
+		session, err = t.client.NewSession()
+		if err != nil {
+			return "", fmt.Errorf("создание сессии SSH: %w", err)
+		}
+	}
+	defer session.Close()
+
+	out, err := session.CombinedOutput(cmd)
+	if err != nil {
+		return string(out), fmt.Errorf("команда завершилась с ошибкой: %w", err)
+	}
+	return string(out), nil
+}
+
