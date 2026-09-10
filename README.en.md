@@ -20,13 +20,14 @@ Servers, Inbounds (VLESS-Reality), users, configurations and QR codes, system mo
 
 A Telegram bot for the [3x-ui](https://github.com/MHSanaei/3x-ui) panel written in pure Go. The bot operates autonomously, replaces the web panel for daily administrative tasks, requires no CGO dependencies, and consumes under 20 MB of RAM.
 
-| Inbounds and System | Users and Clients |
+| Inbounds & Servers | Users, Protocols & Diagnostics |
 |---|---|
-| Step-by-step FSM wizard for creating VLESS-Reality inbounds | Step-by-step client provisioning with UUIDv4 generation |
-| Flexible port selection: random (15000–55000), 443, or custom | Configuration of traffic limits, expiry dates, and IP limits |
-| Reality masking presets (Apple, Yahoo, iCloud, Google) | Access provisioning: generation of `vless://` URI and QR code |
-| Automated generation of X25519 key pairs and Short IDs | Client management: enable, disable, traffic reset, deletion |
-| System monitoring: CPU, RAM, Uptime, and Xray core status | Comprehensive audit log of all administrative actions in SQLite |
+| Multi-server support: manage multiple 3x-ui instances (`/servers`) | Step-by-step client provisioning with UUIDv4 generation |
+| Secure in-memory SSH tunnel: no need to expose panel port | Real-time online client status indicators (🟢/⚪/⏸) |
+| Step-by-step FSM wizard for creating VLESS-Reality inbounds | Universal protocols: subLinks, VLESS, VMess, Trojan, Shadowsocks |
+| Reality masking presets (Apple, Yahoo, iCloud, Google) | Global client search across all inbounds by email/UUID (`/search`) |
+| Automated generation of X25519 key pairs and Short IDs | In-app inspection and download of x-ui & Xray system logs (`/logs`) |
+| System monitoring and GitHub release update notifications | Comprehensive audit log of all administrative actions in SQLite |
 
 ## Quick Start
 
@@ -43,13 +44,14 @@ Step-by-step instructions for systemd service setup and `.env` configuration are
 ## System Architecture
 
 ```mermaid
-flowchart LR
+flowchart TD
     ADMIN["Telegram Admin"] --> BOT["Admin Bot (telebot.v3)"]
     BOT --> MW["Whitelist Middleware"]
-    MW --> FSM["FSM Wizard (Inbounds / Clients)"]
-    BOT --> DB[("SQLite: audit_logs")]
-    BOT --> XUI["3x-ui Panel API"]
-    XUI --> XRAY["Xray Core (VLESS-Reality)"]
+    MW --> FSM["FSM Wizards (Inbounds / Clients / Search)"]
+    BOT --> DB[("SQLite: servers, audit_logs")]
+    BOT --> UPDATER["GitHub Release Checker"]
+    BOT -->|Direct HTTP or SSH Tunnel| XUI["3x-ui Panel API (Active Server)"]
+    XUI --> XRAY["Xray Core (VLESS / VMess / Trojan / SS)"]
 ```
 
 The bot utilizes a full-featured 3x-ui API client with automatic session re-authentication upon receiving HTTP 401 and seamless compatibility with both modern JSON APIs and legacy escaped JSON strings.
@@ -57,9 +59,10 @@ The bot utilizes a full-featured 3x-ui API client with automatic session re-auth
 ## Security
 
 - access restricted via Telegram ID allowlist `ADMIN_IDS` at the middleware layer;
+- optional secure panel access via in-memory SSH port forwarding without opening public ports;
 - secrets and tokens are loaded strictly from local `.env` files protected by mode `0600`;
 - QR code generation is performed in memory without writing temporary files to disk;
-- SQLite audit logging operates via the pure-Go `modernc.org/sqlite` driver without CGO;
+- SQLite storage operates via the pure-Go `modernc.org/sqlite` driver without CGO;
 - context timeouts applied to every handler prevent background goroutines from hanging.
 
 ## Documentation
