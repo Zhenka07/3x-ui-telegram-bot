@@ -141,3 +141,17 @@ func lookupIDList(key string) ([]int64, error) {
 	}
 	return ids, nil
 }
+
+// lookupInt parses an integer environment variable or returns the default value.
+func lookupInt(key string, def int) (int, error) {
+	raw, ok := os.LookupEnv(key)
+	if !ok || strings.TrimSpace(raw) == "" {
+		return def, nil
+	}
+	value, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return 0, fmt.Errorf("переменная %s: ожидалось целое число, получено %q: %w", key, raw, err)
+	}
+	return value, nil
+}
+

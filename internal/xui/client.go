@@ -1,9 +1,11 @@
 package xui
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"sync"
@@ -28,6 +30,7 @@ type Config struct {
 	Password           string
 	Timeout            time.Duration
 	InsecureSkipVerify bool
+	DialContext        func(ctx context.Context, network, addr string) (net.Conn, error)
 }
 
 type Logger interface {
@@ -79,6 +82,7 @@ func New(cfg Config, log Logger) (*APIClient, error) {
 		MaxIdleConns:        10,
 		IdleConnTimeout:     90 * time.Second,
 		TLSHandshakeTimeout: 10 * time.Second,
+		DialContext:         cfg.DialContext,
 	}
 	if cfg.InsecureSkipVerify {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec

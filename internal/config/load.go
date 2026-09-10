@@ -36,6 +36,9 @@ func Load() (*Config, error) {
 	if err := cfg.loadXUI(); err != nil {
 		return nil, err
 	}
+	if err := cfg.loadSSH(); err != nil {
+		return nil, err
+	}
 	cfg.Storage.DBPath = lookupString("DB_PATH", defaultDBPath)
 	cfg.ServerHost = lookupStringFirst([]string{"SERVER_HOST", "REALITY_SERVER_IP", "VLESS_SERVER_ADDR"}, "")
 
@@ -121,3 +124,23 @@ func (c *Config) validate() error {
 	}
 	return nil
 }
+
+// loadSSH loads optional SSH tunneling configuration parameters from environment variables.
+func (c *Config) loadSSH() error {
+	enabled, err := lookupBool("SSH_ENABLED", false)
+	if err != nil {
+		return err
+	}
+	c.SSH.Enabled = enabled
+	c.SSH.Host = lookupString("SSH_HOST", "")
+	port, err := lookupInt("SSH_PORT", 22)
+	if err != nil {
+		return err
+	}
+	c.SSH.Port = port
+	c.SSH.User = lookupString("SSH_USER", "root")
+	c.SSH.KeyPath = lookupString("SSH_KEY_PATH", "")
+	c.SSH.Password = lookupString("SSH_PASSWORD", "")
+	return nil
+}
+
