@@ -54,13 +54,15 @@ func (b *Bot) handleServerStatus(c tele.Context) error {
 		return c.Send("⚠️ Не удалось получить статус сервера.")
 	}
 
+	release, _ := b.updater.GetLatestRelease(ctx)
+
 	menu := &tele.ReplyMarkup{}
 	menu.Inline(
 		menu.Row(menu.Data("🔄 Обновить", "sys")),
 		menu.Row(menu.Data("🔙 Главное меню", "main")),
 	)
 
-	return c.Send(serverStatusText(status), &tele.SendOptions{
+	return c.Send(serverStatusText(status, release), &tele.SendOptions{
 		ParseMode:   tele.ModeHTML,
 		ReplyMarkup: menu,
 	})

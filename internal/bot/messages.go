@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/zhenya/3x-ui-admin/internal/updater"
 	"github.com/zhenya/3x-ui-admin/internal/xui"
 )
 
@@ -20,8 +21,8 @@ func welcomeText() string {
 	return sb.String()
 }
 
-// serverStatusText formats system resource metrics and Xray daemon status.
-func serverStatusText(status *xui.ServerStatus) string {
+// serverStatusText formats system resource metrics, Xray daemon status and upstream release info.
+func serverStatusText(status *xui.ServerStatus, release *updater.ReleaseInfo) string {
 	var sb strings.Builder
 	sb.WriteString("🖥 <b>Системный статус</b>\n\n")
 
@@ -30,6 +31,13 @@ func serverStatusText(status *xui.ServerStatus) string {
 		xrayStatus = "🔴 " + status.Xray.State
 	}
 	sb.WriteString(fmt.Sprintf("• <b>Xray:</b> %s (v%s)\n", xrayStatus, status.Xray.Version))
+
+	if release != nil {
+		sb.WriteString(fmt.Sprintf("• <b>3x-ui релиз:</b> %s\n", release.Version))
+		if updater.IsNewer(status.Xray.Version, release.Version) {
+			sb.WriteString(fmt.Sprintf("🚀 <b>Доступно обновление 3x-ui:</b> <a href=\"%s\">%s</a>\n", release.HTMLURL, escapeHTML(release.Version)))
+		}
+	}
 	sb.WriteString(fmt.Sprintf("• <b>CPU:</b> %.1f%%\n", status.CPU))
 
 	if status.Mem.Total > 0 {
