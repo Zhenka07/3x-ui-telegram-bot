@@ -10,18 +10,20 @@ import (
 
 	"github.com/zhenya/3x-ui-admin/internal/config"
 	"github.com/zhenya/3x-ui-admin/internal/storage"
+	"github.com/zhenya/3x-ui-admin/internal/updater"
 	"github.com/zhenya/3x-ui-admin/internal/xui"
 )
 
 const handlerTimeout = 30 * time.Second
 
 type Bot struct {
-	tele  *tele.Bot
-	xui   *xui.APIClient
-	log   *slog.Logger
-	cfg   config.Config
-	fsm   *FSM
-	audit *storage.AuditRepo
+	tele    *tele.Bot
+	xui     *xui.APIClient
+	log     *slog.Logger
+	cfg     config.Config
+	fsm     *FSM
+	audit   *storage.AuditRepo
+	updater *updater.Checker
 }
 
 // New initializes and configures the Telegram admin bot.
@@ -56,12 +58,13 @@ func New(cfg config.Config, xuiClient *xui.APIClient, audit *storage.AuditRepo, 
 	}
 
 	b := &Bot{
-		tele:  teleBot,
-		xui:   xuiClient,
-		log:   log,
-		cfg:   cfg,
-		fsm:   newFSM(),
-		audit: audit,
+		tele:    teleBot,
+		xui:     xuiClient,
+		log:     log,
+		cfg:     cfg,
+		fsm:     newFSM(),
+		audit:   audit,
+		updater: updater.NewChecker(nil, time.Hour),
 	}
 	b.registerMiddleware()
 	b.registerHandlers()
