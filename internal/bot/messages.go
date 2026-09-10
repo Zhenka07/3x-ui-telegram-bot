@@ -85,16 +85,19 @@ func inboundsListText(inbounds []xui.Inbound) string {
 }
 
 // clientsListText formats the header text for paginated client lists.
-func clientsListText(ib *xui.Inbound, page, totalPages int) string {
+func clientsListText(ib *xui.Inbound, page, totalPages, onlineCount int) string {
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("👥 <b>Клиенты — %s</b> (:%d)\n",
 		escapeHTML(ib.Remark), ib.Port))
+	if onlineCount >= 0 {
+		sb.WriteString(fmt.Sprintf("Всего: %d • 🟢 В сети: %d\n", len(ib.Clients), onlineCount))
+	}
 	sb.WriteString(fmt.Sprintf("Страница %d/%d\n\n", page+1, totalPages))
 	return sb.String()
 }
 
 // clientCardText formats the detailed information card for a client.
-func clientCardText(client *xui.Client, traffic *xui.ClientTraffic, ib *xui.Inbound) string {
+func clientCardText(client *xui.Client, traffic *xui.ClientTraffic, ib *xui.Inbound, isOnline bool) string {
 	var sb strings.Builder
 
 	status := "🟢 активен"
@@ -102,9 +105,14 @@ func clientCardText(client *xui.Client, traffic *xui.ClientTraffic, ib *xui.Inbo
 		status = "🔴 выключен"
 	}
 
+	onlineStatus := "⚪ не в сети"
+	if isOnline {
+		onlineStatus = "🟢 онлайн"
+	}
+
 	sb.WriteString(fmt.Sprintf("👤 <b>%s</b>\n", escapeHTML(client.Email)))
 	sb.WriteString(fmt.Sprintf("Инбаунд: %s (:%d)\n", escapeHTML(ib.Remark), ib.Port))
-	sb.WriteString(fmt.Sprintf("Статус: %s\n", status))
+	sb.WriteString(fmt.Sprintf("Статус: %s • %s\n", status, onlineStatus))
 	sb.WriteString(fmt.Sprintf("UUID: <code>%s</code>\n\n", escapeHTML(client.ID)))
 
 	if traffic != nil {
