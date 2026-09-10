@@ -19,7 +19,8 @@ func (b *Bot) handleStart(c tele.Context) error {
 		replyMenu := &tele.ReplyMarkup{ResizeKeyboard: true}
 		replyMenu.Reply(
 			replyMenu.Row(replyMenu.Text("📡 Прокси"), replyMenu.Text("➕ Новое подключение")),
-			replyMenu.Row(replyMenu.Text("🔍 Поиск клиента"), replyMenu.Text("🖥 Системный статус")),
+			replyMenu.Row(replyMenu.Text("🔍 Поиск клиента"), replyMenu.Text("🌐 Серверы")),
+			replyMenu.Row(replyMenu.Text("🖥 Системный статус")),
 		)
 		_ = c.Send("Панель управления активирована.", replyMenu)
 	}
@@ -30,6 +31,7 @@ func (b *Bot) handleStart(c tele.Context) error {
 		menu.Row(menu.Data("➕ Новое подключение (Клиент)", "wiz_start")),
 		menu.Row(menu.Data("➕ Создать Inbound (Reality)", "inb_create_start")),
 		menu.Row(menu.Data("🔍 Поиск клиента", "cli_search")),
+		menu.Row(menu.Data("🌐 Серверы", "servers_list")),
 		menu.Row(menu.Data("🖥 Системный статус", "sys")),
 	)
 
@@ -180,6 +182,8 @@ func (b *Bot) handleText(c tele.Context) error {
 		return b.handleInboundCreateStart(c)
 	case "🔍 Поиск", "🔍 Поиск клиента":
 		return b.handleSearchStart(c)
+	case "🌐 Серверы":
+		return b.handleServersList(c)
 	case "🖥 Системный статус", "🖥 Статус сервера", "🖥 Статус":
 		return b.handleServerStatus(c)
 	}
