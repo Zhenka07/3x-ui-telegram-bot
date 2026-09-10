@@ -4,19 +4,22 @@
 
 ## Компоненты
 
-- `admin-bot` — бот администратора с FSM-мастерами inbounds/clients и SQLite аудитом;
-- `3x-ui` — панель управления Xray с REST API и веб-интерфейсом;
-- `Xray core` — VPN-ядро, обслуживающее протокол VLESS-Reality;
-- `SQLite` — легковесная локальная база данных без CGO (`audit_logs`).
+- `admin-bot` — бот администратора с FSM-мастерами inbounds/clients, мониторингом и аудитом;
+- `SSH Tunnel` (`internal/sshtunnel`) — in-memory TCP туннелирование для безопасного соединения с приватными панелями;
+- `3x-ui` — панели управления Xray с REST API (поддержка одного или нескольких серверов);
+- `Xray core` — VPN-ядро, обслуживающее протоколы VLESS, VMess, Trojan, Shadowsocks;
+- `Updater` (`internal/updater`) — сервис кэширования и сравнения версий релизов 3x-ui с GitHub API;
+- `SQLite` — легковесная локальная база данных без CGO (`audit_logs` и `servers`).
 
 ```mermaid
-flowchart LR
+flowchart TD
     ADMIN["Telegram Admin"] --> BOT["Admin Bot (telebot.v3)"]
     BOT --> MW["Whitelist Middleware"]
-    MW --> FSM["FSM Wizard (Inbounds / Clients)"]
-    BOT --> DB[("SQLite: audit_logs")]
-    BOT --> XUI["3x-ui Panel API"]
-    XUI --> XRAY["Xray Core (VLESS-Reality)"]
+    MW --> FSM["FSM Wizards (Inbounds / Clients / Search)"]
+    BOT --> DB[("SQLite: servers, audit_logs")]
+    BOT --> UPDATER["GitHub Release Checker"]
+    BOT -->|Прямой запрос или SSH-туннель| XUI["3x-ui Panel API (Active Server)"]
+    XUI --> XRAY["Xray Core (VLESS / VMess / Trojan / SS)"]
 ```
 
 ## Схема базы данных
@@ -24,6 +27,7 @@ flowchart LR
 Бот использует встроенную базу данных SQLite в каталоге `data/`:
 
 ```sql
+-- Журнал действий администраторов
 CREATE TABLE IF NOT EXISTS audit_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp DATETIME NOT NULL,
@@ -32,6 +36,18 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     target_id INTEGER,
     client_email TEXT,
     details TEXT
+);
+
+-- Реестр управляемых серверов
+CREATE TABLE IF NOT EXISTS servers (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    base_url TEXT NOT NULL,
+    username TEXT NOT NULL,
+    password TEXT NOT NULL,
+    server_host TEXT NOT NULL,
+    is_active INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL
 );
 ```
 

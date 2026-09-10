@@ -5,18 +5,21 @@
 ## Main Menu and Commands
 
 ```text
-/start
-/inbounds
-/clients
-/server
-/help
+/start    - interactive main management menu
+/inbounds - inbound connections list and management
+/servers  - server list and active server switcher
+/search   - global client search by email or UUID
+/status   - server health monitoring, Xray status, and updates
+/logs     - view server diagnostic logs (e.g. /logs 100)
+/help     - help reference on bot capabilities
 ```
 
-- `/start` — interactive main management menu;
-- `/inbounds` — inbound connections list and management;
-- `/clients` — search and step-by-step client provisioning;
-- `/server` — server health monitoring and Xray status;
-- `/help` — help reference on bot capabilities.
+## Multi-Server Management
+
+- The `/servers` command or `🌐 Серверы` button displays all registered 3x-ui server endpoints.
+- A green checkmark `✅` indicates the currently active server.
+- Selecting another server immediately switches the bot's runtime context without restart.
+- The default server configuration automatically synchronizes with `.env` on launch.
 
 ## Inbound Creation Wizard
 
@@ -26,15 +29,22 @@
 4. The bot automatically requests or locally generates an X25519 key pair and a 16-character Short ID.
 5. Review the parameters on the confirmation card and click the create button.
 
-## Client Management
+## Client Management & Universal Protocols
 
-- step-by-step client creation in the selected inbound with automatic UUIDv4 generation;
-- searching existing clients by email or UUID;
-- client card with actions: enable/disable toggle, traffic counter reset, and deletion;
-- generating a monospace `vless://` link and sending a QR code image directly to Telegram.
+- **Online status indicators**:
+  - `🟢` — client is online (active traffic right now);
+  - `⚪` — client is active but currently offline;
+  - `⏸` — client is disabled by the administrator.
+- **Global search**: `/search` command or `🔍 Поиск клиента` button searches across all inbounds by email or UUID substrings.
+- **Protocol support & subscriptions**:
+  - Automatically fetches native 3x-ui `subLinks` when available.
+  - Universal link generation for VLESS (Reality and TLS), VMess, Trojan, and Shadowsocks.
+  - In-memory QR code generation sent directly to Telegram.
+- **Client actions**: enable/disable toggle, traffic counter reset, expiry extension, and confirmation-protected deletion.
 
-## System Monitoring and Audit
+## System Diagnostics, Logs & Audit
 
-- live server health metrics: CPU, RAM, disk space utilization, and system Uptime;
-- checking status of the Xray core service (active/stopped);
-- automated recording of every administrative action into the SQLite audit log (`audit_logs`).
+- **Server monitoring (`/status`)**: live CPU, RAM, disk space metrics, uptime, and Xray core status.
+- **Update checking**: queries GitHub API for new 3x-ui releases and alerts if an update is available.
+- **Log inspection (`/logs`)**: inspects `journalctl -u x-ui` via SSH tunnel or panel API fallback. For outputs exceeding 3,500 characters, the bot automatically uploads a `server-logs.txt` document.
+- **Audit logging**: every administrative change is tracked in the local SQLite `audit_logs` table.
