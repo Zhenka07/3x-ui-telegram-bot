@@ -8,8 +8,18 @@ type Config struct {
 	Telegram   TelegramConfig
 	XUI        XUIConfig
 	Storage    StorageConfig
+	SSH        SSHConfig
 	ServerHost string
 	LogLevel   string
+}
+
+type SSHConfig struct {
+	Enabled  bool
+	Host     string
+	Port     int
+	User     string
+	KeyPath  string
+	Password string
 }
 
 type StorageConfig struct {

@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"github.com/zhenya/3x-ui-admin/internal/bot"
 	"github.com/zhenya/3x-ui-admin/internal/config"
+	"github.com/zhenya/3x-ui-admin/internal/sshtunnel"
 	"github.com/zhenya/3x-ui-admin/internal/storage"
 	"github.com/zhenya/3x-ui-admin/internal/xui"
 )
@@ -35,6 +37,24 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	var dialContext func(ctx context.Context, network, addr string) (net.Conn, error)
+	if cfg.SSH.Enabled {
+		logger.Info("инициализация SSH-туннеля для 3x-ui", "host", cfg.SSH.Host, "user", cfg.SSH.User)
+		tunnel, err := sshtunnel.New(sshtunnel.Config{
+			Host:     cfg.SSH.Host,
+			Port:     cfg.SSH.Port,
+			User:     cfg.SSH.User,
+			KeyPath:  cfg.SSH.KeyPath,
+			Password: cfg.SSH.Password,
+			Timeout:  cfg.XUI.Timeout,
+		})
+		if err != nil {
+			return fmt.Errorf("создание SSH-туннеля: %w", err)
+		}
+		defer tunnel.Close()
+		dialContext = tunnel.DialContext
+	}
+
 	logger.Info("инициализация клиента 3x-ui API",
 		"base_url", cfg.XUI.BaseURL,
 	)
@@ -44,6 +64,7 @@ func run() error {
 		Password:           cfg.XUI.Password,
 		Timeout:            cfg.XUI.Timeout,
 		InsecureSkipVerify: cfg.XUI.InsecureSkipVerify,
+		DialContext:        dialContext,
 	}, logger)
 	if err != nil {
 		return fmt.Errorf("создание клиента 3x-ui: %w", err)
