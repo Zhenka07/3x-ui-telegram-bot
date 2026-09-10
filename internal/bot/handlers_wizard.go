@@ -113,6 +113,9 @@ func (b *Bot) handleWizardTextInput(c tele.Context) error {
 		return b.handleInboundPortInput(c, sess, text)
 	case stateInboundWaitSNI, stateInboundWaitSNICustom:
 		return b.handleInboundSNIInput(c, sess, text)
+	case stateClientSearch:
+		b.fsm.Delete(chatID)
+		return b.performClientSearch(c, text)
 	default:
 		return nil
 	}

@@ -24,6 +24,11 @@ func (b *Bot) handleSelectClient(c tele.Context) error {
 		return c.Send("⚠️ Некорректные данные кнопки.")
 	}
 
+	return b.renderClientCard(c, inboundID, email)
+}
+
+// renderClientCard loads and renders the client details card with its actions.
+func (b *Bot) renderClientCard(c tele.Context, inboundID int, email string) error {
 	ctx, cancel := withTimeout()
 	defer cancel()
 
