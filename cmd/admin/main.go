@@ -38,9 +38,11 @@ func run() error {
 	defer stop()
 
 	var dialContext func(ctx context.Context, network, addr string) (net.Conn, error)
+	var tunnel *sshtunnel.Tunnel
 	if cfg.SSH.Enabled {
 		logger.Info("инициализация SSH-туннеля для 3x-ui", "host", cfg.SSH.Host, "user", cfg.SSH.User)
-		tunnel, err := sshtunnel.New(sshtunnel.Config{
+		var err error
+		tunnel, err = sshtunnel.New(sshtunnel.Config{
 			Host:     cfg.SSH.Host,
 			Port:     cfg.SSH.Port,
 			User:     cfg.SSH.User,
@@ -94,6 +96,9 @@ func run() error {
 	tgBot, err := bot.New(*cfg, xuiClient, auditRepo, serverRepo, logger)
 	if err != nil {
 		return fmt.Errorf("создание Telegram-бота: %w", err)
+	}
+	if tunnel != nil {
+		tgBot.SetTunnel(tunnel)
 	}
 
 	go func() {

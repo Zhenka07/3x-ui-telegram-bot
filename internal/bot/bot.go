@@ -10,6 +10,7 @@ import (
 	tele "gopkg.in/telebot.v3"
 
 	"github.com/zhenya/3x-ui-admin/internal/config"
+	"github.com/zhenya/3x-ui-admin/internal/sshtunnel"
 	"github.com/zhenya/3x-ui-admin/internal/storage"
 	"github.com/zhenya/3x-ui-admin/internal/updater"
 	"github.com/zhenya/3x-ui-admin/internal/xui"
@@ -26,6 +27,7 @@ type Bot struct {
 	audit      *storage.AuditRepo
 	serverRepo *storage.ServerRepo
 	updater    *updater.Checker
+	tunnel     *sshtunnel.Tunnel
 
 	clientMu sync.RWMutex
 }
@@ -93,6 +95,7 @@ func (b *Bot) registerHandlers() {
 	b.tele.Handle("/servers", b.handleServersList)
 	b.tele.Handle("/search", b.handleSearchStart)
 	b.tele.Handle("/status", b.handleServerStatus)
+	b.tele.Handle("/logs", b.handleLogs)
 
 	b.tele.Handle("\fmain", b.handleStart)
 	b.tele.Handle("\finbs", b.handleInbounds)
@@ -101,6 +104,7 @@ func (b *Bot) registerHandlers() {
 	b.tele.Handle("\fwiz_start", b.handleWizardStart)
 	b.tele.Handle("\fcli_search", b.handleSearchStart)
 	b.tele.Handle("\fsys", b.handleServerStatus)
+	b.tele.Handle("\fsys_logs", b.handleLogs)
 
 	b.tele.Handle("\finb", b.handleSelectInbound)
 	b.tele.Handle("\fpg", b.handleClientPage)

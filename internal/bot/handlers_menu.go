@@ -60,7 +60,7 @@ func (b *Bot) handleServerStatus(c tele.Context) error {
 
 	menu := &tele.ReplyMarkup{}
 	menu.Inline(
-		menu.Row(menu.Data("🔄 Обновить", "sys")),
+		menu.Row(menu.Data("📋 Логи сервера", "sys_logs"), menu.Data("🔄 Обновить", "sys")),
 		menu.Row(menu.Data("🔙 Главное меню", "main")),
 	)
 
@@ -186,6 +186,8 @@ func (b *Bot) handleText(c tele.Context) error {
 		return b.handleServersList(c)
 	case "🖥 Системный статус", "🖥 Статус сервера", "🖥 Статус":
 		return b.handleServerStatus(c)
+	case "📋 Логи", "📋 Логи сервера":
+		return b.handleLogs(c)
 	}
 
 	if len(strings.TrimSpace(c.Text())) >= 2 {
