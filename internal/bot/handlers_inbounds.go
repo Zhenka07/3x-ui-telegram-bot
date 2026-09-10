@@ -97,6 +97,19 @@ func (b *Bot) showClients(c tele.Context, inboundID, page int) error {
 	}
 
 	clients := ib.Clients
+	onlineList, _ := b.xui.GetOnlineClients(ctx)
+	onlineSet := make(map[string]bool, len(onlineList))
+	for _, email := range onlineList {
+		onlineSet[email] = true
+	}
+
+	onlineCount := 0
+	for _, cl := range clients {
+		if onlineSet[cl.Email] {
+			onlineCount++
+		}
+	}
+
 	totalPages := (len(clients) + clientsPerPage - 1) / clientsPerPage
 	if totalPages == 0 {
 		totalPages = 1
@@ -119,9 +132,12 @@ func (b *Bot) showClients(c tele.Context, inboundID, page int) error {
 	rows := make([]tele.Row, 0, len(pageClients)+3)
 
 	for _, cl := range pageClients {
-		status := "🟢"
+		status := "⚪"
+		if onlineSet[cl.Email] {
+			status = "🟢"
+		}
 		if !cl.Enable {
-			status = "🔴"
+			status = "⏸"
 		}
 		label := fmt.Sprintf("%s %s", status, cl.Email)
 		rows = append(rows, menu.Row(
@@ -143,7 +159,7 @@ func (b *Bot) showClients(c tele.Context, inboundID, page int) error {
 	rows = append(rows, menu.Row(menu.Data("🔙 К инбаундам", "inbs")))
 	menu.Inline(rows...)
 
-	text := clientsListText(ib, page, totalPages)
+	text := clientsListText(ib, page, totalPages, onlineCount)
 	if len(clients) == 0 {
 		text += "Нет клиентов в этом инбаунде."
 	}

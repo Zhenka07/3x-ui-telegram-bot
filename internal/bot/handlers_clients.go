@@ -43,6 +43,16 @@ func (b *Bot) handleSelectClient(c tele.Context) error {
 		traffic = t
 	}
 
+	isOnline := false
+	if onlines, err := b.xui.GetOnlineClients(ctx); err == nil {
+		for _, oEmail := range onlines {
+			if oEmail == email {
+				isOnline = true
+				break
+			}
+		}
+	}
+
 	menu := &tele.ReplyMarkup{}
 	cbData := fmt.Sprintf("%d|%s", inboundID, email)
 
@@ -63,7 +73,7 @@ func (b *Bot) handleSelectClient(c tele.Context) error {
 		menu.Row(menu.Data("🔙 К клиентам", "inb", strconv.Itoa(inboundID))),
 	)
 
-	return c.Send(clientCardText(client, traffic, ib), &tele.SendOptions{
+	return c.Send(clientCardText(client, traffic, ib, isOnline), &tele.SendOptions{
 		ParseMode:   tele.ModeHTML,
 		ReplyMarkup: menu,
 	})

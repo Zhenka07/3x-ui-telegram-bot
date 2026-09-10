@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -325,4 +326,73 @@ func extractConnectionLinks(raw json.RawMessage) []string {
 
 	return result
 }
+
+// GetOnlineClients retrieves a list of client emails that are currently online in 3x-ui.
+func (c *APIClient) GetOnlineClients(ctx context.Context) ([]string, error) {
+	endpoints := []string{
+		"/panel/api/clients/onlines",
+		"/panel/api/inbounds/onlines",
+	}
+
+	var lastErr error
+	for _, ep := range endpoints {
+		resp, err := c.doJSON(ctx, "POST", ep, nil)
+		if err != nil {
+			if errors.Is(err, ErrNotFound) {
+				continue
+			}
+			lastErr = err
+			continue
+		}
+
+		emails := extractOnlineEmails(resp.Obj)
+		return emails, nil
+	}
+
+	if lastErr != nil {
+		return nil, fmt.Errorf("запрос онлайн-клиентов: %w", lastErr)
+	}
+	return []string{}, nil
+}
+
+func extractOnlineEmails(raw json.RawMessage) []string {
+	var list []string
+	if err := json.Unmarshal(raw, &list); err == nil {
+		return cleanEmails(list)
+	}
+
+	var obj map[string]any
+	if err := json.Unmarshal(raw, &obj); err == nil {
+		for _, key := range []string{"emails", "online", "clients", "items", "obj"} {
+			if val, ok := obj[key]; ok {
+				if arr, ok := val.([]any); ok {
+					var result []string
+					for _, item := range arr {
+						if s, ok := item.(string); ok && s != "" {
+							result = append(result, s)
+						}
+					}
+					return cleanEmails(result)
+				}
+			}
+		}
+	}
+
+	return []string{}
+}
+
+func cleanEmails(items []string) []string {
+	seen := make(map[string]bool)
+	var out []string
+	for _, it := range items {
+		trimmed := strings.TrimSpace(it)
+		if trimmed != "" && !seen[trimmed] {
+			seen[trimmed] = true
+			out = append(out, trimmed)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 
