@@ -402,7 +402,7 @@ func (b *Bot) handleWizardConfirm(c tele.Context) error {
 		client = tempClient
 	}
 
-	uri, qr, err := b.buildClientLink(ib, client)
+	uri, qr, err := b.buildClientLink(ctx, ib, client)
 	b.fsm.Delete(chatID)
 
 	if err != nil {

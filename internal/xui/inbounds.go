@@ -106,6 +106,7 @@ func parseInbound(raw rawInbound) Inbound {
 
 	if len(raw.StreamSettings) > 0 {
 		if data, ok := decodeObjectJSON(raw.StreamSettings); ok {
+			ib.StreamSettings = string(data)
 			var ss streamSettingsJSON
 			if err := json.Unmarshal(data, &ss); err == nil {
 				if ss.Security == "reality" && ss.RealitySettings != nil {
