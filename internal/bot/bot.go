@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	tele "gopkg.in/telebot.v3"
@@ -17,17 +18,20 @@ import (
 const handlerTimeout = 30 * time.Second
 
 type Bot struct {
-	tele    *tele.Bot
-	xui     *xui.APIClient
-	log     *slog.Logger
-	cfg     config.Config
-	fsm     *FSM
-	audit   *storage.AuditRepo
-	updater *updater.Checker
+	tele       *tele.Bot
+	xui        *xui.APIClient
+	log        *slog.Logger
+	cfg        config.Config
+	fsm        *FSM
+	audit      *storage.AuditRepo
+	serverRepo *storage.ServerRepo
+	updater    *updater.Checker
+
+	clientMu sync.RWMutex
 }
 
 // New initializes and configures the Telegram admin bot.
-func New(cfg config.Config, xuiClient *xui.APIClient, audit *storage.AuditRepo, log *slog.Logger) (*Bot, error) {
+func New(cfg config.Config, xuiClient *xui.APIClient, audit *storage.AuditRepo, serverRepo *storage.ServerRepo, log *slog.Logger) (*Bot, error) {
 	if xuiClient == nil {
 		return nil, fmt.Errorf("создание бота: не передан клиент 3x-ui")
 	}
@@ -58,13 +62,14 @@ func New(cfg config.Config, xuiClient *xui.APIClient, audit *storage.AuditRepo, 
 	}
 
 	b := &Bot{
-		tele:    teleBot,
-		xui:     xuiClient,
-		log:     log,
-		cfg:     cfg,
-		fsm:     newFSM(),
-		audit:   audit,
-		updater: updater.NewChecker(nil, time.Hour),
+		tele:       teleBot,
+		xui:        xuiClient,
+		log:        log,
+		cfg:        cfg,
+		fsm:        newFSM(),
+		audit:      audit,
+		serverRepo: serverRepo,
+		updater:    updater.NewChecker(nil, time.Hour),
 	}
 	b.registerMiddleware()
 	b.registerHandlers()
@@ -85,11 +90,14 @@ func (b *Bot) registerHandlers() {
 	b.tele.Handle("/start", b.handleStart)
 	b.tele.Handle("/help", b.handleStart)
 	b.tele.Handle("/inbounds", b.handleInbounds)
+	b.tele.Handle("/servers", b.handleServersList)
 	b.tele.Handle("/search", b.handleSearchStart)
 	b.tele.Handle("/status", b.handleServerStatus)
 
 	b.tele.Handle("\fmain", b.handleStart)
 	b.tele.Handle("\finbs", b.handleInbounds)
+	b.tele.Handle("\fservers_list", b.handleServersList)
+	b.tele.Handle("\fsw_srv", b.handleSwitchServer)
 	b.tele.Handle("\fwiz_start", b.handleWizardStart)
 	b.tele.Handle("\fcli_search", b.handleSearchStart)
 	b.tele.Handle("\fsys", b.handleServerStatus)

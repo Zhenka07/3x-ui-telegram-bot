@@ -80,10 +80,21 @@ func (d *DB) migrate(ctx context.Context) error {
 		created_at INTEGER NOT NULL
 	);
 	CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
+
+	CREATE TABLE IF NOT EXISTS servers (
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL,
+		base_url TEXT NOT NULL,
+		username TEXT NOT NULL,
+		password TEXT NOT NULL,
+		server_host TEXT NOT NULL,
+		is_active INTEGER NOT NULL DEFAULT 0,
+		created_at INTEGER NOT NULL
+	);
 	`
 	_, err := d.sql.ExecContext(ctx, query)
 	if err != nil {
-		return fmt.Errorf("миграция audit_logs: %w", err)
+		return fmt.Errorf("миграция базы данных: %w", err)
 	}
 	return nil
 }

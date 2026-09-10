@@ -56,9 +56,21 @@ func run() error {
 	}
 	defer sqlDB.Close()
 	auditRepo := storage.NewAuditRepo(sqlDB)
+	serverRepo := storage.NewServerRepo(sqlDB)
+
+	if err := serverRepo.EnsureDefaultServer(ctx, storage.ServerRecord{
+		ID:         "default",
+		Name:       "Основной сервер",
+		BaseURL:    cfg.XUI.BaseURL,
+		Username:   cfg.XUI.Username,
+		Password:   cfg.XUI.Password,
+		ServerHost: cfg.ServerHost,
+	}); err != nil {
+		return fmt.Errorf("инициализация списка серверов: %w", err)
+	}
 
 	logger.Info("инициализация Telegram-бота")
-	tgBot, err := bot.New(*cfg, xuiClient, auditRepo, logger)
+	tgBot, err := bot.New(*cfg, xuiClient, auditRepo, serverRepo, logger)
 	if err != nil {
 		return fmt.Errorf("создание Telegram-бота: %w", err)
 	}
