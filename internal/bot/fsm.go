@@ -22,6 +22,8 @@ const (
 	stateInboundWaitSNI
 	stateInboundWaitSNICustom
 	stateInboundConfirm
+
+	stateClientSearch
 )
 
 const sessionTimeout = 5 * time.Minute

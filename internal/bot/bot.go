@@ -82,11 +82,13 @@ func (b *Bot) registerHandlers() {
 	b.tele.Handle("/start", b.handleStart)
 	b.tele.Handle("/help", b.handleStart)
 	b.tele.Handle("/inbounds", b.handleInbounds)
+	b.tele.Handle("/search", b.handleSearchStart)
 	b.tele.Handle("/status", b.handleServerStatus)
 
 	b.tele.Handle("\fmain", b.handleStart)
 	b.tele.Handle("\finbs", b.handleInbounds)
 	b.tele.Handle("\fwiz_start", b.handleWizardStart)
+	b.tele.Handle("\fcli_search", b.handleSearchStart)
 	b.tele.Handle("\fsys", b.handleServerStatus)
 
 	b.tele.Handle("\finb", b.handleSelectInbound)
