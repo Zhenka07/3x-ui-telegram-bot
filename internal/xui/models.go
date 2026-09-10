@@ -29,6 +29,8 @@ type Inbound struct {
 
 	IsReality bool
 	Reality   RealityInfo
+
+	StreamSettings string
 }
 
 // TotalTraffic returns the total traffic transferred by the inbound in bytes.
@@ -94,6 +96,7 @@ type Client struct {
 	Enable     bool   `json:"enable"`
 	TgID       string `json:"tgId"`
 	SubID      string `json:"subId"`
+	Password   string `json:"password,omitempty"`
 	Reset      int    `json:"reset"`
 }
 

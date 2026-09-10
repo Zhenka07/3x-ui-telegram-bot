@@ -2,6 +2,7 @@ package bot
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -271,7 +272,7 @@ func (b *Bot) handleGenerateLink(c tele.Context) error {
 		return c.Send(fmt.Sprintf("⚠️ Клиент %q не найден.", email))
 	}
 
-	uri, qr, err := b.buildClientLink(ib, client)
+	uri, qr, err := b.buildClientLink(ctx, ib, client)
 	if err != nil {
 		b.log.Error("не удалось сгенерировать ссылку", "email", email, "error", err)
 		return c.Send("⚠️ Не удалось сгенерировать ссылку. Проверьте параметры инбаунда.")
@@ -292,21 +293,27 @@ func (b *Bot) handleGenerateLink(c tele.Context) error {
 	return nil
 }
 
-// buildClientLink constructs a VLESS URI and QR code based on inbound and client parameters.
-func (b *Bot) buildClientLink(ib *xui.Inbound, client *xui.Client) (string, []byte, error) {
-	params, err := vless.ParseInboundReality(b.cfg.ServerHost, ib, client.Flow)
-	if err != nil {
-		return "", nil, err
+// buildClientLink constructs a connection URI and QR code based on inbound and client parameters.
+// It first attempts to fetch exact share links from 3x-ui subLinks API, and falls back to universal local generation.
+func (b *Bot) buildClientLink(ctx context.Context, ib *xui.Inbound, client *xui.Client) (string, []byte, error) {
+	var uri string
+
+	if client.SubID != "" {
+		links, subErr := b.xui.GetClientSubLinks(ctx, client.SubID)
+		if subErr == nil && len(links) > 0 {
+			uri = links[0]
+			b.log.Debug("получена ссылка через subLinks API", "email", client.Email, "sub_id", client.SubID)
+		} else if subErr != nil {
+			b.log.Debug("subLinks API недоступен, переход к локальному генератору", "error", subErr)
+		}
 	}
 
-	builder, err := vless.NewBuilder(*params)
-	if err != nil {
-		return "", nil, fmt.Errorf("создание билдера: %w", err)
-	}
-
-	uri, err := builder.BuildURI(client.ID, ib.Remark)
-	if err != nil {
-		return "", nil, fmt.Errorf("формирование ссылки: %w", err)
+	if uri == "" {
+		var err error
+		uri, err = vless.BuildUniversalLink(b.cfg.ServerHost, ib, client)
+		if err != nil {
+			return "", nil, err
+		}
 	}
 
 	qr, err := vless.GenerateQR(uri, 0)
