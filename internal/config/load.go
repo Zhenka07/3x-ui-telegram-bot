@@ -14,6 +14,10 @@ const (
 	defaultXUITimeout    = 20 * time.Second
 	defaultPollerTimeout = 10 * time.Second
 	defaultLogLevel      = "info"
+	defaultLogFormat     = "json"
+	defaultServiceName   = "3x-ui-admin-bot"
+	defaultExporterType  = "stdout"
+	defaultOTLPEndpoint  = "localhost:4317"
 )
 
 // Load reads configuration from environment variables and an optional .env file, then validates it.
@@ -26,10 +30,11 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	cfg := &Config{
-		LogLevel: strings.ToLower(lookupString("LOG_LEVEL", defaultLogLevel)),
-	}
+	cfg := &Config{}
 
+	if err := cfg.loadObservability(); err != nil {
+		return nil, err
+	}
 	if err := cfg.loadTelegram(); err != nil {
 		return nil, err
 	}
@@ -143,4 +148,35 @@ func (c *Config) loadSSH() error {
 	c.SSH.Password = lookupString("SSH_PASSWORD", "")
 	return nil
 }
+
+// loadObservability loads logging and distributed tracing configuration parameters.
+func (c *Config) loadObservability() error {
+	logLevel := strings.ToLower(lookupString("LOG_LEVEL", defaultLogLevel))
+	logFormat := strings.ToLower(lookupString("LOG_FORMAT", defaultLogFormat))
+
+	otelEnabled, err := lookupBool("OTEL_ENABLED", false)
+	if err != nil {
+		return err
+	}
+	serviceName := lookupString("OTEL_SERVICE_NAME", defaultServiceName)
+	exporterType := strings.ToLower(lookupString("OTEL_EXPORTER_TYPE", defaultExporterType))
+	otlpEndpoint := lookupString("OTEL_OTLP_ENDPOINT", defaultOTLPEndpoint)
+	insecure, err := lookupBool("OTEL_INSECURE", true)
+	if err != nil {
+		return err
+	}
+
+	c.Observability = ObservabilityConfig{
+		LogLevel:     logLevel,
+		LogFormat:    logFormat,
+		OTelEnabled:  otelEnabled,
+		ServiceName:  serviceName,
+		ExporterType: exporterType,
+		OTLPEndpoint: otlpEndpoint,
+		Insecure:     insecure,
+	}
+	c.LogLevel = logLevel
+	return nil
+}
+
 

@@ -7,9 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel/trace"
 	tele "gopkg.in/telebot.v3"
 
 	"github.com/zhenya/3x-ui-admin/internal/config"
+	"github.com/zhenya/3x-ui-admin/internal/observability"
 	"github.com/zhenya/3x-ui-admin/internal/sshtunnel"
 	"github.com/zhenya/3x-ui-admin/internal/storage"
 	"github.com/zhenya/3x-ui-admin/internal/updater"
@@ -28,12 +30,13 @@ type Bot struct {
 	serverRepo *storage.ServerRepo
 	updater    *updater.Checker
 	tunnel     *sshtunnel.Tunnel
+	tracer     trace.Tracer
 
 	clientMu sync.RWMutex
 }
 
 // New initializes and configures the Telegram admin bot.
-func New(cfg config.Config, xuiClient *xui.APIClient, audit *storage.AuditRepo, serverRepo *storage.ServerRepo, log *slog.Logger) (*Bot, error) {
+func New(cfg config.Config, xuiClient *xui.APIClient, audit *storage.AuditRepo, serverRepo *storage.ServerRepo, log *slog.Logger, tr ...trace.Tracer) (*Bot, error) {
 	if xuiClient == nil {
 		return nil, fmt.Errorf("создание бота: не передан клиент 3x-ui")
 	}
@@ -63,6 +66,13 @@ func New(cfg config.Config, xuiClient *xui.APIClient, audit *storage.AuditRepo, 
 		return nil, fmt.Errorf("инициализация telebot: %w", err)
 	}
 
+	var tracer trace.Tracer
+	if len(tr) > 0 && tr[0] != nil {
+		tracer = tr[0]
+	} else {
+		tracer = observability.Tracer("telegram-bot")
+	}
+
 	b := &Bot{
 		tele:       teleBot,
 		xui:        xuiClient,
@@ -72,6 +82,7 @@ func New(cfg config.Config, xuiClient *xui.APIClient, audit *storage.AuditRepo, 
 		audit:      audit,
 		serverRepo: serverRepo,
 		updater:    updater.NewChecker(nil, time.Hour),
+		tracer:     tracer,
 	}
 	b.registerMiddleware()
 	b.registerHandlers()
@@ -161,9 +172,14 @@ func (b *Bot) Start(ctx context.Context) error {
 	return nil
 }
 
-// withTimeout creates a new context with default handler execution timeout.
-func withTimeout() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), handlerTimeout)
+// withTimeout creates a new context with default handler execution timeout,
+// inheriting the trace context from tele.Context if provided.
+func withTimeout(c ...tele.Context) (context.Context, context.CancelFunc) {
+	parent := context.Background()
+	if len(c) > 0 && c[0] != nil {
+		parent = observability.ContextFromTele(c[0])
+	}
+	return context.WithTimeout(parent, handlerTimeout)
 }
 
 // auditLog records an administrative action into the audit storage.
@@ -175,7 +191,7 @@ func (b *Bot) auditLog(c tele.Context, action string, inboundID int, clientEmail
 	if sender := c.Sender(); sender != nil {
 		adminID = sender.ID
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := withTimeout(c)
 	defer cancel()
 	if err := b.audit.Log(ctx, storage.AuditLog{
 		AdminID:     adminID,
@@ -184,6 +200,6 @@ func (b *Bot) auditLog(c tele.Context, action string, inboundID int, clientEmail
 		ClientEmail: clientEmail,
 		Details:     details,
 	}); err != nil {
-		b.log.Warn("не удалось записать запись аудита", "action", action, "err", err)
+		b.log.WarnContext(ctx, "не удалось записать запись аудита", "action", action, "err", err)
 	}
 }

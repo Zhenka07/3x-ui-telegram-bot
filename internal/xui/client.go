@@ -10,6 +10,8 @@ import (
 	"net/http/cookiejar"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 var (
@@ -96,7 +98,7 @@ func New(cfg Config, log Logger) (*APIClient, error) {
 		httpClient: &http.Client{
 			Timeout:   timeout,
 			Jar:       jar,
-			Transport: transport,
+			Transport: otelhttp.NewTransport(transport),
 			CheckRedirect: func(*http.Request, []*http.Request) error {
 				return http.ErrUseLastResponse
 			},

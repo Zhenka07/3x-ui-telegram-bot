@@ -10,6 +10,10 @@ import (
 	"sync"
 	"time"
 
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -79,11 +83,23 @@ func New(cfg Config) (*Tunnel, error) {
 
 // DialContext establishes a TCP connection to the remote address through the SSH tunnel.
 func (t *Tunnel) DialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	ctx, span := otel.Tracer("sshtunnel").Start(ctx, "ssh.dial",
+		trace.WithAttributes(
+			attribute.String("ssh.host", t.cfg.Host),
+			attribute.Int("ssh.port", t.cfg.Port),
+			attribute.String("network", network),
+			attribute.String("addr", addr),
+		),
+	)
+	defer span.End()
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	if t.client == nil {
 		if err := t.connectLocked(); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return nil, err
 		}
 	}
@@ -93,10 +109,14 @@ func (t *Tunnel) DialContext(ctx context.Context, network, addr string) (net.Con
 		_ = t.client.Close()
 		t.client = nil
 		if recErr := t.connectLocked(); recErr != nil {
+			span.RecordError(recErr)
+			span.SetStatus(codes.Error, recErr.Error())
 			return nil, fmt.Errorf("переподключение SSH туннеля: %w (первичная ошибка: %v)", recErr, err)
 		}
 		conn, err = t.client.Dial(network, addr)
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return nil, fmt.Errorf("dial через SSH туннель к %s: %w", addr, err)
 		}
 	}
@@ -128,11 +148,22 @@ func (t *Tunnel) Close() error {
 
 // ExecuteCommand executes a remote shell command via SSH and returns its combined output.
 func (t *Tunnel) ExecuteCommand(ctx context.Context, cmd string) (string, error) {
+	ctx, span := otel.Tracer("sshtunnel").Start(ctx, "ssh.execute_command",
+		trace.WithAttributes(
+			attribute.String("ssh.host", t.cfg.Host),
+			attribute.Int("ssh.port", t.cfg.Port),
+			attribute.String("ssh.command", cmd),
+		),
+	)
+	defer span.End()
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
 	if t.client == nil {
 		if err := t.connectLocked(); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return "", err
 		}
 	}
@@ -142,10 +173,14 @@ func (t *Tunnel) ExecuteCommand(ctx context.Context, cmd string) (string, error)
 		_ = t.client.Close()
 		t.client = nil
 		if recErr := t.connectLocked(); recErr != nil {
+			span.RecordError(recErr)
+			span.SetStatus(codes.Error, recErr.Error())
 			return "", fmt.Errorf("переподключение SSH: %w (первичная ошибка: %v)", recErr, err)
 		}
 		session, err = t.client.NewSession()
 		if err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return "", fmt.Errorf("создание сессии SSH: %w", err)
 		}
 	}
@@ -153,6 +188,8 @@ func (t *Tunnel) ExecuteCommand(ctx context.Context, cmd string) (string, error)
 
 	out, err := session.CombinedOutput(cmd)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return string(out), fmt.Errorf("команда завершилась с ошибкой: %w", err)
 	}
 	return string(out), nil

@@ -8,9 +8,11 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/zhenya/3x-ui-admin/internal/bot"
 	"github.com/zhenya/3x-ui-admin/internal/config"
+	"github.com/zhenya/3x-ui-admin/internal/observability"
 	"github.com/zhenya/3x-ui-admin/internal/sshtunnel"
 	"github.com/zhenya/3x-ui-admin/internal/storage"
 	"github.com/zhenya/3x-ui-admin/internal/xui"
@@ -31,8 +33,21 @@ func run() error {
 		return fmt.Errorf("загрузка конфигурации: %w", err)
 	}
 
-	logger := setupLogger(cfg.LogLevel)
+	logger := observability.NewLogger(cfg.Observability)
+	slog.SetDefault(logger)
 	logger.Info("запуск сервиса 3x-ui Admin Bot")
+
+	tracer, shutdownTracer, err := observability.InitTracer(context.Background(), cfg.Observability)
+	if err != nil {
+		return fmt.Errorf("инициализация трассировки: %w", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := shutdownTracer(shutdownCtx); err != nil {
+			logger.Error("ошибка при остановке провайдера трассировки", "error", err)
+		}
+	}()
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -93,7 +108,7 @@ func run() error {
 	}
 
 	logger.Info("инициализация Telegram-бота")
-	tgBot, err := bot.New(*cfg, xuiClient, auditRepo, serverRepo, logger)
+	tgBot, err := bot.New(*cfg, xuiClient, auditRepo, serverRepo, logger, tracer)
 	if err != nil {
 		return fmt.Errorf("создание Telegram-бота: %w", err)
 	}
@@ -112,24 +127,4 @@ func run() error {
 
 	logger.Info("сервис 3x-ui Admin Bot штатно остановлен")
 	return nil
-}
-
-// setupLogger initializes and returns a slog.Logger configured with the given log level.
-func setupLogger(levelStr string) *slog.Logger {
-	var level slog.Level
-	switch levelStr {
-	case "debug":
-		level = slog.LevelDebug
-	case "warn", "warning":
-		level = slog.LevelWarn
-	case "error":
-		level = slog.LevelError
-	default:
-		level = slog.LevelInfo
-	}
-
-	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: level,
-	})
-	return slog.New(handler)
 }
