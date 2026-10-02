@@ -1,62 +1,44 @@
 package bot
 
 import (
-	"time"
+	"fmt"
 
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	tele "gopkg.in/telebot.v3"
+
+	"github.com/zhenya/3x-ui-admin/internal/observability"
 )
 
 // registerMiddleware registers global bot middlewares in sequential order.
 func (b *Bot) registerMiddleware() {
-	b.tele.Use(b.recoverMiddleware, b.loggingMiddleware, b.adminOnlyMiddleware)
+	b.tele.Use(
+		observability.TelegramTraceMiddleware(b.tracer, b.log),
+		b.recoverMiddleware,
+		b.adminOnlyMiddleware,
+	)
 }
 
-// recoverMiddleware recovers from panics in handler executions.
+// recoverMiddleware recovers from panics in handler executions and records them in the trace span.
 func (b *Bot) recoverMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) (err error) {
 		defer func() {
 			if r := recover(); r != nil {
+				ctx := observability.ContextFromTele(c)
+				span := trace.SpanFromContext(ctx)
+				if span.SpanContext().IsValid() {
+					span.RecordError(fmt.Errorf("panic: %v", r))
+					span.SetStatus(codes.Error, "panic recovered")
+				}
 				var userID int64
 				if c.Sender() != nil {
 					userID = c.Sender().ID
 				}
-				b.log.Error("паника в обработчике", "tg_id", userID, "panic", r)
+				b.log.ErrorContext(ctx, "паника в обработчике", "tg_id", userID, "panic", r)
 				err = errPanicRecovered
 			}
 		}()
 		return next(c)
-	}
-}
-
-// loggingMiddleware logs update processing details and duration.
-func (b *Bot) loggingMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
-	return func(c tele.Context) error {
-		started := time.Now()
-
-		var (
-			userID   int64
-			username string
-		)
-		if sender := c.Sender(); sender != nil {
-			userID = sender.ID
-			username = sender.Username
-		}
-		payload := c.Text()
-
-		err := next(c)
-
-		attrs := []any{
-			"tg_id", userID,
-			"username", username,
-			"text", payload,
-			"duration", time.Since(started).String(),
-		}
-		if err != nil {
-			b.log.Error("обновление обработано с ошибкой", append(attrs, "error", err)...)
-			return err
-		}
-		b.log.Debug("обновление обработано", attrs...)
-		return nil
 	}
 }
 
@@ -68,9 +50,11 @@ func (b *Bot) adminOnlyMiddleware(next tele.HandlerFunc) tele.HandlerFunc {
 			return nil
 		}
 		if !b.cfg.Telegram.IsAdmin(sender.ID) {
-			b.log.Warn("доступ запрещён (не админ)", "tg_id", sender.ID, "username", sender.Username)
+			ctx := observability.ContextFromTele(c)
+			b.log.WarnContext(ctx, "доступ запрещён (не админ)", "tg_id", sender.ID, "username", sender.Username)
 			return nil
 		}
 		return next(c)
 	}
 }
+

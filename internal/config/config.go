@@ -2,16 +2,21 @@ package config
 
 import (
 	"time"
+
+	"github.com/zhenya/3x-ui-admin/internal/observability"
 )
 
 type Config struct {
-	Telegram   TelegramConfig
-	XUI        XUIConfig
-	Storage    StorageConfig
-	SSH        SSHConfig
-	ServerHost string
-	LogLevel   string
+	Telegram      TelegramConfig
+	XUI           XUIConfig
+	Storage       StorageConfig
+	SSH           SSHConfig
+	Observability observability.Config
+	ServerHost    string
+	LogLevel      string
 }
+
+type ObservabilityConfig = observability.Config
 
 type SSHConfig struct {
 	Enabled  bool

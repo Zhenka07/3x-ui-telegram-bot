@@ -5,6 +5,11 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
 
 type ServerRecord struct {
@@ -28,9 +33,14 @@ func NewServerRepo(db *DB) *ServerRepo {
 
 // EnsureDefaultServer inserts the initial server from configuration if no servers exist.
 func (r *ServerRepo) EnsureDefaultServer(ctx context.Context, s ServerRecord) error {
+	ctx, span := otel.Tracer("sqlite").Start(ctx, "db.servers.ensure_default")
+	defer span.End()
+
 	var count int
 	err := r.db.sql.QueryRowContext(ctx, "SELECT COUNT(*) FROM servers").Scan(&count)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("проверка наличия серверов: %w", err)
 	}
 
@@ -44,9 +54,14 @@ func (r *ServerRepo) EnsureDefaultServer(ctx context.Context, s ServerRecord) er
 
 // List returns all configured servers.
 func (r *ServerRepo) List(ctx context.Context) ([]ServerRecord, error) {
+	ctx, span := otel.Tracer("sqlite").Start(ctx, "db.servers.list")
+	defer span.End()
+
 	query := `SELECT id, name, base_url, username, password, server_host, is_active, created_at FROM servers ORDER BY created_at ASC`
 	rows, err := r.db.sql.QueryContext(ctx, query)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("запрос списка серверов: %w", err)
 	}
 	defer rows.Close()
@@ -57,17 +72,29 @@ func (r *ServerRepo) List(ctx context.Context) ([]ServerRecord, error) {
 		var createdAtUnix int64
 		var isActiveInt int
 		if err := rows.Scan(&s.ID, &s.Name, &s.BaseURL, &s.Username, &s.Password, &s.ServerHost, &isActiveInt, &createdAtUnix); err != nil {
+			span.RecordError(err)
+			span.SetStatus(codes.Error, err.Error())
 			return nil, fmt.Errorf("сканирование сервера: %w", err)
 		}
 		s.IsActive = isActiveInt == 1
 		s.CreatedAt = time.Unix(createdAtUnix, 0).UTC()
 		result = append(result, s)
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return nil, err
+	}
+	return result, nil
 }
 
 // Get retrieves a server by ID.
 func (r *ServerRepo) Get(ctx context.Context, id string) (*ServerRecord, error) {
+	ctx, span := otel.Tracer("sqlite").Start(ctx, "db.servers.get",
+		trace.WithAttributes(attribute.String("server.id", id)),
+	)
+	defer span.End()
+
 	query := `SELECT id, name, base_url, username, password, server_host, is_active, created_at FROM servers WHERE id = ?`
 	row := r.db.sql.QueryRowContext(ctx, query, id)
 
@@ -78,6 +105,8 @@ func (r *ServerRepo) Get(ctx context.Context, id string) (*ServerRecord, error) 
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("получение сервера %q: %w", id, err)
 	}
 	s.IsActive = isActiveInt == 1
@@ -87,6 +116,9 @@ func (r *ServerRepo) Get(ctx context.Context, id string) (*ServerRecord, error) 
 
 // GetActive retrieves the currently active server.
 func (r *ServerRepo) GetActive(ctx context.Context) (*ServerRecord, error) {
+	ctx, span := otel.Tracer("sqlite").Start(ctx, "db.servers.get_active")
+	defer span.End()
+
 	query := `SELECT id, name, base_url, username, password, server_host, is_active, created_at FROM servers WHERE is_active = 1 LIMIT 1`
 	row := r.db.sql.QueryRowContext(ctx, query)
 
@@ -97,6 +129,8 @@ func (r *ServerRepo) GetActive(ctx context.Context) (*ServerRecord, error) {
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, fmt.Errorf("получение активного сервера: %w", err)
 	}
 	s.IsActive = isActiveInt == 1
@@ -106,31 +140,58 @@ func (r *ServerRepo) GetActive(ctx context.Context) (*ServerRecord, error) {
 
 // SetActive marks the specified server as active and all others as inactive.
 func (r *ServerRepo) SetActive(ctx context.Context, id string) error {
+	ctx, span := otel.Tracer("sqlite").Start(ctx, "db.servers.set_active",
+		trace.WithAttributes(attribute.String("server.id", id)),
+	)
+	defer span.End()
+
 	tx, err := r.db.sql.BeginTx(ctx, nil)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("начало транзакции переключения сервера: %w", err)
 	}
 	defer tx.Rollback()
 
 	if _, err := tx.ExecContext(ctx, "UPDATE servers SET is_active = 0"); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("сброс активного сервера: %w", err)
 	}
 
 	res, err := tx.ExecContext(ctx, "UPDATE servers SET is_active = 1 WHERE id = ?", id)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("активация сервера %q: %w", id, err)
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil || rows == 0 {
-		return fmt.Errorf("сервер %q не найден", id)
+		errNotFound := fmt.Errorf("сервер %q не найден", id)
+		span.RecordError(errNotFound)
+		span.SetStatus(codes.Error, errNotFound.Error())
+		return errNotFound
 	}
 
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+		return err
+	}
+	return nil
 }
 
 // Add adds a new server to the registry.
 func (r *ServerRepo) Add(ctx context.Context, s ServerRecord) error {
+	ctx, span := otel.Tracer("sqlite").Start(ctx, "db.servers.add",
+		trace.WithAttributes(
+			attribute.String("server.id", s.ID),
+			attribute.String("server.name", s.Name),
+		),
+	)
+	defer span.End()
+
 	query := `INSERT INTO servers (id, name, base_url, username, password, server_host, is_active, created_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 	isActiveInt := 0
@@ -144,6 +205,8 @@ func (r *ServerRepo) Add(ctx context.Context, s ServerRecord) error {
 
 	_, err := r.db.sql.ExecContext(ctx, query, s.ID, s.Name, s.BaseURL, s.Username, s.Password, s.ServerHost, isActiveInt, created)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("добавление сервера %q: %w", s.Name, err)
 	}
 	return nil
@@ -151,8 +214,15 @@ func (r *ServerRepo) Add(ctx context.Context, s ServerRecord) error {
 
 // Delete removes a server by ID.
 func (r *ServerRepo) Delete(ctx context.Context, id string) error {
+	ctx, span := otel.Tracer("sqlite").Start(ctx, "db.servers.delete",
+		trace.WithAttributes(attribute.String("server.id", id)),
+	)
+	defer span.End()
+
 	_, err := r.db.sql.ExecContext(ctx, "DELETE FROM servers WHERE id = ?", id)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return fmt.Errorf("удаление сервера %q: %w", id, err)
 	}
 	return nil
