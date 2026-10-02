@@ -35,6 +35,7 @@ session-*.md
 !CHANGELOG.md
 !CONTRIBUTING*.md
 !SECURITY*.md
+!AGENTS.md
 !docs/**
 
 # IDE & OS files
